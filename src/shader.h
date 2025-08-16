@@ -103,6 +103,19 @@ public:
         glUniform4i(glGetUniformLocation(ID, name.c_str()), value0, value1, value2, value3);
     }
     // ------------------------------------------------------------------------
+    void setUint(const std::string &name, unsigned int value0) const {
+        glUniform1ui(glGetUniformLocation(ID, name.c_str()), value0);
+    }
+    void setUint(const std::string &name, unsigned int value0, unsigned int value1) const {
+        glUniform2ui(glGetUniformLocation(ID, name.c_str()), value0, value1);
+    }
+    void setUint(const std::string &name, unsigned int value0, unsigned int value1, unsigned int value2) const {
+        glUniform3ui(glGetUniformLocation(ID, name.c_str()), value0, value1, value2);
+    }
+    void setUint(const std::string &name, unsigned int value0, unsigned int value1, unsigned int value2, unsigned int value3) const {
+        glUniform4ui(glGetUniformLocation(ID, name.c_str()), value0, value1, value2, value3);
+    }
+    // ------------------------------------------------------------------------
     void setFloat(const std::string &name, float value0) const {
         glUniform1f(glGetUniformLocation(ID, name.c_str()), value0);
     }

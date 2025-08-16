@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 
 #include "shader.h"
@@ -8,8 +9,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 
 int main() {
     // glfw: initialize and configure
@@ -25,7 +26,7 @@ int main() {
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", glfwGetPrimaryMonitor(), NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -47,10 +48,10 @@ int main() {
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
-         0.5f,  0.5f, 0.0f,   1.0, 1.0,  // top right
-         0.5f, -0.5f, 0.0f,   1.0, 0.0,  // bottom right
-        -0.5f, -0.5f, 0.0f,   0.0, 0.0,  // bottom left
-        -0.5f,  0.5f, 0.0f,   0.0, 1.0   // top left
+         1.0f,  1.0f, 0.0f,  1.0, 1.0,  // top right
+         1.0f, -1.0f, 0.0f,  1.0, 0.0,  // bottom right
+        -1.0f, -1.0f, 0.0f,  0.0, 0.0,  // bottom left
+        -1.0f,  1.0f, 0.0f,  0.0, 1.0   // top left
     };
     unsigned int indices[] = {  // note that we start from 0!
         0, 1, 3,  // first Triangle
@@ -84,12 +85,29 @@ int main() {
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
     glBindVertexArray(0);
 
+    // Create 2 textures for ping-pong accumulation
+    GLuint accumTextures[2];
+    glGenTextures(2, accumTextures);
+    for (int i = 0; i < 2; ++i) {
+        glBindTexture(GL_TEXTURE_2D, accumTextures[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    }
 
-    Shader shader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/default.frag");
+    // Framebuffer for rendering accumulation
+    GLuint fbo;
+    glGenFramebuffers(1, &fbo);
+
+
+    Shader shader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/raytrace.frag");
+
+    Shader displayShader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/display.frag");
 
     // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+    unsigned int frameCount = 0;
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -98,15 +116,50 @@ int main() {
         // -----
         processInput(window);
 
+        int readIdx  = frameCount % 2;
+        int writeIdx = (frameCount + 1) % 2;
+
         // render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // draw our first triangle
+        // draw
+
+        // ---------- Pass 1: Raytrace + Accumulate to Texture ----------
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, accumTextures[writeIdx], 0);
+
         shader.use();
-        shader.setFloat("uColor", 0.3f, 0.2f, 0.1f);
-        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+        shader.setUint("uResolution", SCR_WIDTH, SCR_HEIGHT);
+        shader.setFloat("uFocalLength", tan(45.0 / 180.0 * 3.1415926)*.5 * (float)SCR_HEIGHT);
+
+        shader.setFloat("cameraPosition", 2.0, 3.0, -5.0);
+        shader.setFloat("cameraForward", -0.3244428422615251, -0.48666426339228763, 0.8111071056538127);
+        shader.setFloat("cameraUp", -0.18074256993863339, 0.8735890880367281, 0.45185642484658345);
+        shader.setFloat("cameraRight", 0.9284766908852593, 0.0, 0.3713906763541037);
+
+        shader.setInt("maxBounces", 10);
+
+        shader.setUint("renderedFrames", frameCount);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
+
+        glBindVertexArray(VAO);
+        //glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // glBindVertexArray(0); // no need to unbind it every time
+
+        // ---------- Pass 2: Display to Screen ----------
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        displayShader.use();
+
+        displayShader.setInt("uTexture", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, accumTextures[writeIdx]);
+
+        glBindVertexArray(VAO);
         //glDrawArrays(GL_TRIANGLES, 0, 6);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         // glBindVertexArray(0); // no need to unbind it every time
@@ -115,6 +168,8 @@ int main() {
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        frameCount += 1;
     }
 
     // optional: de-allocate all resources once they've outlived their purpose:
