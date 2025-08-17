@@ -42,7 +42,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(libs/glfw)     			#window opener
 add_subdirectory(libs/glad) 				#opengl loader
-#add_subdirectory(libs/glm)      			#math
+add_subdirectory(libs/glm)      			#math
 
 
 # MY_SOURCES is defined to be a list of all the source files for my game 
@@ -93,4 +93,4 @@ if (WIN32)
 endif()
 
 
-target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE glfw glad)
+target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE glm glfw glad)

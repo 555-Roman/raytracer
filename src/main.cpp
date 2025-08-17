@@ -1,10 +1,15 @@
 #include <cmath>
 #include <iostream>
+#include <vector>
 
 #include "shader.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
+#include "glm/glm.hpp"
 
+using namespace glm;
+
+void sendObjects(Shader shader);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 
@@ -143,6 +148,8 @@ int main() {
 
         shader.setUint("renderedFrames", frameCount);
 
+        sendObjects(shader);
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
 
@@ -182,6 +189,135 @@ int main() {
     // ------------------------------------------------------------------
     glfwTerminate();
     return 0;
+}
+
+
+struct Material {
+    vec3 color;
+    vec3 emissionColor;
+    float emissionStrength;
+    float smoothness;
+};
+
+struct Sphere {
+    vec3 pos;
+    float radius;
+    Material material;
+};
+
+struct Triangle {
+    vec3 posA;
+    vec3 posB;
+    vec3 posC;
+    vec3 normalA;
+    vec3 normalB;
+    vec3 normalC;
+    Material material;
+};
+
+std::vector<Sphere> spheres;
+void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, const float value) {
+    std::ostringstream ss;
+    ss << "spheres[" << sphereIndex << "]." << propertyName;
+    std::string uniformName = ss.str();
+
+    std::cout << "setting sphere uniform: " << uniformName << " to: " << value << std::endl;
+    shader.setFloat(uniformName.c_str(), value);
+}
+void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, const vec3 value) {
+    std::ostringstream ss;
+    ss << "spheres[" << sphereIndex << "]." << propertyName;
+    std::string uniformName = ss.str();
+
+    std::cout << "setting sphere uniform: " << uniformName << " to: " << value.x << ", " << value.y << ", " << value.z << std::endl;
+    shader.setFloat(uniformName.c_str(), value.x, value.y, value.z);
+}
+void sendSpheres(Shader shader) {
+    Material sphereMat0 = {vec3(0.8, 0.0, 0.8),  vec3(0.0), 0.0,  0.0};
+    Material sphereMat1 = {vec3(0.8, 0.0, 0.0),  vec3(0.0), 0.0,  0.0};
+    Material sphereMat2 = {vec3(0.8, 0.8, 0.0),  vec3(0.0), 0.0,  0.0};
+    Material sphereMat3 = {vec3(0.0, 0.8, 0.0),  vec3(0.0), 0.0,  0.9};
+    Material sphereMat4 = {vec3(0.8, 0.8, 0.8),  vec3(0.0), 0.0,  0.0};
+    Material sphereMat5 = {vec3(0.0, 0.0, 0.0),  vec3(1.0), 3.5,  0.0};
+    Sphere sphere0 = {vec3(0.0, -100.0, 0.0), 100.0, sphereMat0};
+    Sphere sphere1 = {vec3(0.0, 1.0, 1.0), 1.0, sphereMat1};
+    Sphere sphere2 = {vec3(-2.0, 0.75, 0.5), 0.75, sphereMat2};
+    Sphere sphere3 = {vec3(-3.5, 0.5, 0.0), 0.5, sphereMat3};
+    Sphere sphere4 = {vec3(2.5, 1.25, 0.0), 1.25, sphereMat4};
+    Sphere sphere5 = {vec3(-100.0, 50.0, 100.0), 100.0, sphereMat5};
+    spheres = std::vector<Sphere>{};
+    spheres.push_back(sphere0);
+    spheres.push_back(sphere1);
+    spheres.push_back(sphere2);
+    spheres.push_back(sphere3);
+    spheres.push_back(sphere4);
+    spheres.push_back(sphere5);
+
+    shader.setInt("numSpheres", spheres.size());
+
+    for (int i = 0; i < spheres.size(); ++i) {
+        SetSphereUniform(shader, "pos", i, spheres[i].pos);
+        SetSphereUniform(shader, "radius", i, spheres[i].radius);
+
+        SetSphereUniform(shader, "material.color", i, spheres[i].material.color);
+        SetSphereUniform(shader, "material.emissionColor", i, spheres[i].material.emissionColor);
+        SetSphereUniform(shader, "material.emissionStrength", i, spheres[i].material.emissionStrength);
+        SetSphereUniform(shader, "material.smoothness", i, spheres[i].material.smoothness);
+    }
+}
+
+std::vector<Triangle> triangles;
+void SetTriangleUniform(Shader shader, const char* propertyName, int triangleIndex, const float value) {
+    std::ostringstream ss;
+    ss << "triangles[" << triangleIndex << "]." << propertyName;
+    std::string uniformName = ss.str();
+
+    std::cout << "setting triangle uniform: " << uniformName << " to: " << value << std::endl;
+    shader.setFloat(uniformName.c_str(), value);
+}
+void SetTriangleUniform(Shader shader, const char* propertyName, int sphereIndex, const vec3 value) {
+    std::ostringstream ss;
+    ss << "triangles[" << sphereIndex << "]." << propertyName;
+    std::string uniformName = ss.str();
+
+    std::cout << "setting triangle uniform: " << uniformName << " to: " << value.x << ", " << value.y << ", " << value.z << std::endl;
+    shader.setFloat(uniformName.c_str(), value.x, value.y, value.z);
+}
+void sendTriangles(Shader shader) {
+    Material triangleMat0 = {vec3(1.0), vec3(0.0), 0.0, 1.0};
+    Triangle triangle0 = {
+        //      vec3(0.0, 0.0, -1.0), vec3(0.0, 0.0, -4.0), vec3(3.0, 0.0, -1.0),
+        //      vec3(0.0, 0.0, -1.0), vec3(3.0, 0.0, -1.0), vec3(0.0, 0.0, -4.0),
+        //      vec3(0.0, 0.5, -1.0), vec3(0.0, 0.5, -4.0), vec3(3.0, 0.5, -1.0),
+        vec3(0.0, 0.5, -1.0), vec3(3.0, 0.5, -1.0), vec3(0.0, 0.5, -4.0),
+  //      vec3(0.0, 0.5, -1.0), vec3(3.0, 0.5, 0.0), vec3(0.0, 0.5, -4.0),
+     normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
+  //      normalize(vec3(-0.1, 1.0, 0.1)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
+        triangleMat0
+    };
+    triangles = std::vector<Triangle>{};
+    triangles.push_back(triangle0);
+
+    shader.setInt("numTriangles", triangles.size());
+
+    for (int i = 0; i < triangles.size(); ++i) {
+        SetTriangleUniform(shader, "posA", i, triangles[i].posA);
+        SetTriangleUniform(shader, "posB", i, triangles[i].posB);
+        SetTriangleUniform(shader, "posC", i, triangles[i].posC);
+        SetTriangleUniform(shader, "normalA", i, triangles[i].normalA);
+        SetTriangleUniform(shader, "normalB", i, triangles[i].normalB);
+        SetTriangleUniform(shader, "normalC", i, triangles[i].normalC);
+
+        SetTriangleUniform(shader, "material.color", i, triangles[i].material.color);
+        SetTriangleUniform(shader, "material.emissionColor", i, triangles[i].material.emissionColor);
+        SetTriangleUniform(shader, "material.emissionStrength", i, triangles[i].material.emissionStrength);
+        SetTriangleUniform(shader, "material.smoothness", i, triangles[i].material.smoothness);
+    }
+}
+
+void sendObjects(Shader shader) {
+    sendSpheres(shader);
+    sendTriangles(shader);
 }
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly

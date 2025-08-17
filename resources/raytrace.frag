@@ -46,16 +46,29 @@ struct Material {
    vec3 color;
    vec3 emissionColor;
    float emissionStrength;
+   float smoothness;
 };
 
-struct Sphere {
+
+#define MAX_SPHERES 10
+uniform int numSpheres;
+uniform struct Sphere {
    vec3 pos;
    float radius;
    Material material;
-};
+} spheres[MAX_SPHERES];
 
-const int numSpheres = 6;
-Sphere spheres[numSpheres];
+#define MAX_TRIANGLES 10
+uniform int numTriangles;
+uniform struct Triangle {
+   vec3 posA;
+   vec3 posB;
+   vec3 posC;
+   vec3 normalA;
+   vec3 normalB;
+   vec3 normalC;
+   Material material;
+} triangles[MAX_TRIANGLES];
 
 struct HitInfo {
    bool didHit;
@@ -91,6 +104,30 @@ HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
    return hitInfo;
 }
 
+HitInfo intersectRayTriangle(Ray ray, Triangle triangle) {
+   vec3 edgeAB = triangle.posB - triangle.posA;
+   vec3 edgeAC = triangle.posC - triangle.posA;
+   vec3 normalVector =  cross(edgeAB, edgeAC);
+   vec3 ao = ray.origin - triangle.posA;
+   vec3 dao = cross(ao, ray.dir);
+
+   float determinant = -dot(ray.dir, normalVector);
+   float invDet = 1.0 / determinant;
+
+   float t = dot(ao, normalVector) * invDet;
+   float u = dot(edgeAC, dao) * invDet;
+   float v = -dot(edgeAB, dao) * invDet;
+   float w = 1.0 - u - v;
+
+   HitInfo hitInfo;
+   hitInfo.didHit = determinant >= 1e-6 && t > 0 && u >= 0 && v >= 0 && w >= 0;
+   hitInfo.pos = ray.origin + ray.dir * t;
+   hitInfo.normal = normalize(triangle.normalA * w + triangle.normalB * u + triangle.normalC * v);
+   hitInfo.t = t;
+   hitInfo.material = triangle.material;
+   return hitInfo;
+}
+
 HitInfo calculateRayIntersection(Ray ray) {
    HitInfo closestHit;
    closestHit.didHit = false;
@@ -99,6 +136,13 @@ HitInfo calculateRayIntersection(Ray ray) {
    for (int i = 0; i < numSpheres; i++) {
       Sphere sphere = spheres[i];
       HitInfo hitInfo = intersectRaySphere(ray, sphere);
+      if (hitInfo.didHit && hitInfo.t < closestHit.t) {
+         closestHit = hitInfo;
+      }
+   }
+   for (int i = 0; i < numTriangles; i++) {
+      Triangle triangle = triangles[i];
+      HitInfo hitInfo = intersectRayTriangle(ray, triangle);
       if (hitInfo.didHit && hitInfo.t < closestHit.t) {
          closestHit = hitInfo;
       }
@@ -117,11 +161,14 @@ vec3 traceRay(Ray ray, inout uint rngState) {
    vec3 rayColor = vec3(1.0);
    for (int i = 0; i <= maxBounces; i++) {
       HitInfo hitInfo = calculateRayIntersection(ray);
+      Material material = hitInfo.material;
+
       if (hitInfo.didHit) {
          ray.origin = hitInfo.pos;
-         ray.dir = hitInfo.normal + RandomDirection(rngState);
+         vec3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
+         vec3 specularDir = reflect(ray.dir, hitInfo.normal);
+         ray.dir = mix(diffuseDir, specularDir, material.smoothness);
 
-         Material material = hitInfo.material;
          vec3 emittedLight = material.emissionColor * material.emissionStrength;
          inLight += emittedLight * rayColor;
          rayColor *= material.color;
@@ -140,27 +187,6 @@ void main() {
    uint rngState = pixelCoord.x * uResolution.x + pixelCoord.y + renderedFrames * 719393u;
 
    Ray ray = {cameraPosition, vec3(rayDir.xy + RandomDirectionInCircle(rngState)/uResolution.x, rayDir.z)};
-   Material sphereMat0 = {vec3(0.8, 0.0, 0.8), vec3(0.0), 0.0};
-   Material sphereMat1 = {vec3(0.8, 0.0, 0.0), vec3(0.0), 0.0};
-   Material sphereMat2 = {vec3(0.8, 0.8, 0.0), vec3(0.0), 0.0};
-   Material sphereMat3 = {vec3(0.0, 0.8, 0.0), vec3(0.0), 0.0};
-   Material sphereMat4 = {vec3(0.8, 0.8, 0.8), vec3(0.0), 0.0};
-   Material sphereMat5 = {vec3(0.0, 0.0, 0.0), vec3(1.0), 3.5};
-   Sphere sphere0 = {vec3(0.0, -100.0, 0.0), 100.0, sphereMat0};
-   Sphere sphere1 = {vec3(0.0, 1.0, 1.0), 1.0, sphereMat1};
-   Sphere sphere2 = {vec3(-2.0, 0.75, 0.5), 0.75, sphereMat2};
-   Sphere sphere3 = {vec3(-3.5, 0.5, 0.0), 0.5, sphereMat3};
-   Sphere sphere4 = {vec3(2.5, 1.25, 0.0), 1.25, sphereMat4};
-   Sphere sphere5 = {vec3(-100.0, 50.0, 100.0), 100.0, sphereMat5};
-
-   spheres[0] = sphere0;
-   spheres[1] = sphere1;
-   spheres[2] = sphere2;
-   spheres[3] = sphere3;
-   spheres[4] = sphere4;
-   spheres[5] = sphere5;
-
-
 
    vec3 prev = texture(uPrevFrame, uv).rgb;
    vec3 curr = traceRay(ray, rngState);
