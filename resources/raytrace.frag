@@ -31,6 +31,10 @@ vec3 RandomHemisphereDirection(vec3 normal, inout uint rngState) {
    vec3 dir = RandomDirection(rngState);
    return dir * sign(dot(normal, dir));
 }
+vec2 RandomDirectionInCircle(inout uint rngState) {
+   float theta = RandomValue(rngState) * 360;
+   return vec2(cos(theta), sin(theta));
+}
 
 
 struct Ray {
@@ -102,6 +106,11 @@ HitInfo calculateRayIntersection(Ray ray) {
    return closestHit;
 }
 
+vec3 GetEnvironmentLight(Ray ray) {
+   float a = 0.5*(ray.dir.y + 1.0);
+   return mix(vec3(1.0, 1.0, 1.0), vec3(0.5, 0.7, 1.0), a);
+}
+
 uniform int maxBounces;
 vec3 traceRay(Ray ray, inout uint rngState) {
    vec3 inLight = vec3(0.0);
@@ -110,13 +119,14 @@ vec3 traceRay(Ray ray, inout uint rngState) {
       HitInfo hitInfo = calculateRayIntersection(ray);
       if (hitInfo.didHit) {
          ray.origin = hitInfo.pos;
-         ray.dir = RandomHemisphereDirection(hitInfo.normal, rngState);
+         ray.dir = hitInfo.normal + RandomDirection(rngState);
 
          Material material = hitInfo.material;
          vec3 emittedLight = material.emissionColor * material.emissionStrength;
          inLight += emittedLight * rayColor;
          rayColor *= material.color;
       } else {
+         inLight += GetEnvironmentLight(ray) * rayColor;
          break;
       }
    }
@@ -129,16 +139,16 @@ void main() {
    uvec2 pixelCoord = uvec2(uv * uResolution);
    uint rngState = pixelCoord.x * uResolution.x + pixelCoord.y + renderedFrames * 719393u;
 
-   Ray ray = {cameraPosition, rayDir};
+   Ray ray = {cameraPosition, vec3(rayDir.xy + RandomDirectionInCircle(rngState)/uResolution.x, rayDir.z)};
    Material sphereMat0 = {vec3(0.8, 0.0, 0.8), vec3(0.0), 0.0};
    Material sphereMat1 = {vec3(0.8, 0.0, 0.0), vec3(0.0), 0.0};
    Material sphereMat2 = {vec3(0.8, 0.8, 0.0), vec3(0.0), 0.0};
    Material sphereMat3 = {vec3(0.0, 0.8, 0.0), vec3(0.0), 0.0};
    Material sphereMat4 = {vec3(0.8, 0.8, 0.8), vec3(0.0), 0.0};
-   Material sphereMat5 = {vec3(0.0, 0.0, 0.0), vec3(1.0), 5.0};
+   Material sphereMat5 = {vec3(0.0, 0.0, 0.0), vec3(1.0), 3.5};
    Sphere sphere0 = {vec3(0.0, -100.0, 0.0), 100.0, sphereMat0};
-   Sphere sphere1 = {vec3(0.0, 1.0, 0.0), 1.0, sphereMat1};
-   Sphere sphere2 = {vec3(-2.0, 0.75, 0.0), 0.75, sphereMat2};
+   Sphere sphere1 = {vec3(0.0, 1.0, 1.0), 1.0, sphereMat1};
+   Sphere sphere2 = {vec3(-2.0, 0.75, 0.5), 0.75, sphereMat2};
    Sphere sphere3 = {vec3(-3.5, 0.5, 0.0), 0.5, sphereMat3};
    Sphere sphere4 = {vec3(2.5, 1.25, 0.0), 1.25, sphereMat4};
    Sphere sphere5 = {vec3(-100.0, 50.0, 100.0), 100.0, sphereMat5};

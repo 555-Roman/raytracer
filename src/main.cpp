@@ -139,7 +139,7 @@ int main() {
         shader.setFloat("cameraUp", -0.18074256993863339, 0.8735890880367281, 0.45185642484658345);
         shader.setFloat("cameraRight", 0.9284766908852593, 0.0, 0.3713906763541037);
 
-        shader.setInt("maxBounces", 10);
+        shader.setInt("maxBounces", 3);
 
         shader.setUint("renderedFrames", frameCount);
 
@@ -169,7 +169,7 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
 
-        frameCount += 1;
+        frameCount++;
     }
 
     // optional: de-allocate all resources once they've outlived their purpose:
