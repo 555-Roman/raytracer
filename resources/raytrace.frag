@@ -182,15 +182,23 @@ vec3 traceRay(Ray ray, inout uint rngState) {
 
 uniform sampler2D uPrevFrame;
 uniform uint renderedFrames;
+uniform int samplesPerPixel;
+uniform bool accumulate;
 void main() {
    uvec2 pixelCoord = uvec2(uv * uResolution);
    uint rngState = pixelCoord.x * uResolution.x + pixelCoord.y + renderedFrames * 719393u;
 
    Ray ray = {cameraPosition, vec3(rayDir.xy + RandomDirectionInCircle(rngState)/uResolution.x, rayDir.z)};
 
-   vec3 prev = texture(uPrevFrame, uv).rgb;
-   vec3 curr = traceRay(ray, rngState);
-   float alpha = 1.0 / float(renderedFrames + 1u);
-   vec3 blended = mix(prev, curr, alpha);
-   FragColor = vec4(blended, 1.0);
+   vec3 curr = vec3(0);
+   for (int i = 0; i < samplesPerPixel; i++)
+      curr += traceRay(ray, rngState);
+   curr /= samplesPerPixel;
+   if (accumulate) {
+      vec3 prev = texture(uPrevFrame, uv).rgb;
+      float alpha = 1.0 / float(renderedFrames + 1u);
+      vec3 blended = mix(prev, curr, alpha);
+      FragColor = vec4(blended, 1.0);
+   } else
+      FragColor = vec4(curr, 1.0);
 }

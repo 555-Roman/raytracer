@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -13,10 +14,26 @@ using namespace glm;
 void sendObjects(Shader shader);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
+float deltaTime = 0.0f;
+bool isStill = true;
+unsigned int frameCount = 0;
+
+const float cameraMoveSpeed = 8;
+const float cameraRotateSpeed = 60;
 
 // #define FULLSCREEN
 
 std::vector<Triangle> triangles;
+
+// vec3 cameraPosition = vec3(2.0, 3.0, -5.0);
+// vec3 cameraForward = vec3(-0.3244428422615251, -0.48666426339228763, 0.8111071056538127);
+// vec3 cameraUp = vec3(-0.18074256993863339, 0.8735890880367281, 0.45185642484658345);
+// vec3 cameraRight = vec3(0.9284766908852593, 0.0, 0.3713906763541037);
+
+vec3 cameraPosition = vec3(0);
+vec3 cameraForward = vec3(0, 0, 1);
+vec3 cameraUp = vec3(0, 1, 0);
+vec3 cameraRight = vec3(1, 0, 0);
 
 int main() {
     // glfw: initialize and configure
@@ -135,11 +152,11 @@ int main() {
     // uncomment this call to draw in wireframe polygons.
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    unsigned int frameCount = 0;
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
+        std::chrono::time_point<std::chrono::system_clock> startFrame = std::chrono::high_resolution_clock::now();
         // input
         // -----
         processInput(window);
@@ -162,14 +179,15 @@ int main() {
         shader.setUint("uResolution", SCR_WIDTH, SCR_HEIGHT);
         shader.setFloat("uFocalLength", tan(45.0 / 180.0 * 3.1415926)*.5 * (float)SCR_HEIGHT);
 
-        shader.setFloat("cameraPosition", 2.0, 3.0, -5.0);
-        shader.setFloat("cameraForward", -0.3244428422615251, -0.48666426339228763, 0.8111071056538127);
-        shader.setFloat("cameraUp", -0.18074256993863339, 0.8735890880367281, 0.45185642484658345);
-        shader.setFloat("cameraRight", 0.9284766908852593, 0.0, 0.3713906763541037);
+        shader.setFloat("cameraPosition", cameraPosition.x, cameraPosition.y, cameraPosition.z);
+        shader.setFloat("cameraForward", cameraForward.x, cameraForward.y, cameraForward.z);
+        shader.setFloat("cameraUp", cameraUp.x, cameraUp.y, cameraUp.z);
+        shader.setFloat("cameraRight", cameraRight.x, cameraRight.y, cameraRight.z);
 
-        shader.setInt("maxBounces", 3);
-
+        shader.setInt("maxBounces", 4);
+        shader.setInt("samplesPerPixel", 3);
         shader.setUint("renderedFrames", frameCount);
+        shader.setBool("accumulate", isStill);
 
         sendObjects(shader);
 
@@ -200,6 +218,7 @@ int main() {
         glfwPollEvents();
 
         frameCount++;
+        deltaTime = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startFrame).count();
     }
 
     // optional: de-allocate all resources once they've outlived their purpose:
@@ -316,12 +335,58 @@ void sendObjects(Shader shader) {
     sendTriangles(shader);
 }
 
+vec3 rotateX(vec3 vector, float angle) {
+    float rad = radians(angle);
+    return vec3(vector.x, vector.y*cos(rad) - vector.z*sin(rad), vector.y*sin(rad) + vector.z*cos(rad));
+}
+vec3 rotateY(vec3 vector, float angle) {
+    float rad = radians(angle);
+    return vec3(vector.x*cos(rad) - vector.z*sin(rad), vector.y, vector.x*sin(rad) + vector.z*cos(rad));
+}
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
+float cameraPitch = 0, cameraYaw = 0;
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    vec3 toAdd = vec3(0, 0, 0);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        toAdd += normalize(vec3(cameraForward.x, 0, cameraForward.z)) * cameraMoveSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        toAdd -= normalize(vec3(cameraForward.x, 0, cameraForward.z)) * cameraMoveSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        toAdd += normalize(vec3(cameraRight.x, 0, cameraRight.z)) * cameraMoveSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        toAdd -= normalize(vec3(cameraRight.x, 0, cameraRight.z)) * cameraMoveSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        toAdd += normalize(vec3(0, cameraUp.y, 0)) * cameraMoveSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+        toAdd -= normalize(vec3(0, cameraUp.y, 0)) * cameraMoveSpeed * deltaTime;
+    cameraPosition += toAdd;
+
+    float pitch = 0;
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        pitch -= cameraRotateSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        pitch += cameraRotateSpeed * deltaTime;
+    cameraPitch += pitch;
+    cameraForward = rotateX(vec3(0, 0, 1), cameraPitch);
+    cameraUp = rotateX(vec3(0, 1,0 ), cameraPitch);
+    cameraRight = rotateX(vec3(1, 0, 0), cameraPitch);
+    float yaw = 0;
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        yaw -= cameraRotateSpeed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        yaw += cameraRotateSpeed * deltaTime;
+    cameraYaw += yaw;
+    cameraForward = rotateY(cameraForward, cameraYaw);
+    cameraUp = rotateY(cameraUp, cameraYaw);
+    cameraRight = rotateY(cameraRight, cameraYaw);
+
+    isStill = toAdd == vec3(0) && pitch == 0 && yaw == 0;
+    frameCount = isStill ? frameCount : 0;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
