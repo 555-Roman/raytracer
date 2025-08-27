@@ -50,7 +50,7 @@ struct Material {
 };
 
 
-#define MAX_SPHERES 10
+#define MAX_SPHERES 6
 uniform int numSpheres;
 uniform struct Sphere {
    vec3 pos;
@@ -58,7 +58,7 @@ uniform struct Sphere {
    Material material;
 } spheres[MAX_SPHERES];
 
-#define MAX_TRIANGLES 10
+#define MAX_TRIANGLES 12
 uniform int numTriangles;
 uniform struct Triangle {
    vec3 posA;

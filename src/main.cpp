@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 
+#include "objParser.h"
 #include "shader.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
@@ -13,9 +14,9 @@ void sendObjects(Shader shader);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 
-// settings
-const unsigned int SCR_WIDTH = 1920;
-const unsigned int SCR_HEIGHT = 1080;
+// #define FULLSCREEN
+
+std::vector<Triangle> triangles;
 
 int main() {
     // glfw: initialize and configure
@@ -31,7 +32,17 @@ int main() {
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", glfwGetPrimaryMonitor(), NULL);
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+#ifdef FULLSCREEN
+    const unsigned int SCR_WIDTH = mode->width;
+    const unsigned int SCR_HEIGHT = mode->height;
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", monitor, NULL);
+#else
+    const unsigned int SCR_WIDTH = mode->width / 2;
+    const unsigned int SCR_HEIGHT = mode->height / 2;
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+#endif
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -108,6 +119,18 @@ int main() {
     Shader shader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/raytrace.frag");
 
     Shader displayShader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/display.frag");
+
+    std::vector<Triangle> trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/model.obj");
+    for (Triangle triangle : trianglesFromModel) {
+        // std::cout << "pushing triangle" << std::endl;
+        // std::cout << " posA: " << triangle.posA.x << ", " << triangle.posA.y << ", " << triangle.posA.z << std::endl;
+        // std::cout << " posB: " << triangle.posB.x << ", " << triangle.posB.y << ", " << triangle.posB.z << std::endl;
+        // std::cout << " posC: " << triangle.posC.x << ", " << triangle.posC.y << ", " << triangle.posC.z << std::endl;
+        // std::cout << " normalA: " << triangle.normalA.x << ", " << triangle.normalA.y << ", " << triangle.normalA.z << std::endl;
+        // std::cout << " normalB: " << triangle.normalB.x << ", " << triangle.normalB.y << ", " << triangle.normalB.z << std::endl;
+        // std::cout << " normalC: " << triangle.normalC.x << ", " << triangle.normalC.y << ", " << triangle.normalC.z << std::endl;
+        triangles.push_back(triangle);
+    }
 
     // uncomment this call to draw in wireframe polygons.
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -192,28 +215,6 @@ int main() {
 }
 
 
-struct Material {
-    vec3 color;
-    vec3 emissionColor;
-    float emissionStrength;
-    float smoothness;
-};
-
-struct Sphere {
-    vec3 pos;
-    float radius;
-    Material material;
-};
-
-struct Triangle {
-    vec3 posA;
-    vec3 posB;
-    vec3 posC;
-    vec3 normalA;
-    vec3 normalB;
-    vec3 normalC;
-    Material material;
-};
 
 std::vector<Sphere> spheres;
 void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, const float value) {
@@ -221,7 +222,6 @@ void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, 
     ss << "spheres[" << sphereIndex << "]." << propertyName;
     std::string uniformName = ss.str();
 
-    std::cout << "setting sphere uniform: " << uniformName << " to: " << value << std::endl;
     shader.setFloat(uniformName.c_str(), value);
 }
 void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, const vec3 value) {
@@ -229,7 +229,6 @@ void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, 
     ss << "spheres[" << sphereIndex << "]." << propertyName;
     std::string uniformName = ss.str();
 
-    std::cout << "setting sphere uniform: " << uniformName << " to: " << value.x << ", " << value.y << ", " << value.z << std::endl;
     shader.setFloat(uniformName.c_str(), value.x, value.y, value.z);
 }
 void sendSpheres(Shader shader) {
@@ -239,7 +238,7 @@ void sendSpheres(Shader shader) {
     Material sphereMat3 = {vec3(0.0, 0.8, 0.0),  vec3(0.0), 0.0,  0.9};
     Material sphereMat4 = {vec3(0.8, 0.8, 0.8),  vec3(0.0), 0.0,  0.0};
     Material sphereMat5 = {vec3(0.0, 0.0, 0.0),  vec3(1.0), 3.5,  0.0};
-    Sphere sphere0 = {vec3(0.0, -100.0, 0.0), 100.0, sphereMat0};
+    Sphere sphere0 = {vec3(0.0, -101.0, 0.0), 100.0, sphereMat0};
     Sphere sphere1 = {vec3(0.0, 1.0, 1.0), 1.0, sphereMat1};
     Sphere sphere2 = {vec3(-2.0, 0.75, 0.5), 0.75, sphereMat2};
     Sphere sphere3 = {vec3(-3.5, 0.5, 0.0), 0.5, sphereMat3};
@@ -247,10 +246,10 @@ void sendSpheres(Shader shader) {
     Sphere sphere5 = {vec3(-100.0, 50.0, 100.0), 100.0, sphereMat5};
     spheres = std::vector<Sphere>{};
     spheres.push_back(sphere0);
-    spheres.push_back(sphere1);
-    spheres.push_back(sphere2);
-    spheres.push_back(sphere3);
-    spheres.push_back(sphere4);
+    // spheres.push_back(sphere1);
+    // spheres.push_back(sphere2);
+    // spheres.push_back(sphere3);
+    // spheres.push_back(sphere4);
     spheres.push_back(sphere5);
 
     shader.setInt("numSpheres", spheres.size());
@@ -266,13 +265,11 @@ void sendSpheres(Shader shader) {
     }
 }
 
-std::vector<Triangle> triangles;
 void SetTriangleUniform(Shader shader, const char* propertyName, int triangleIndex, const float value) {
     std::ostringstream ss;
     ss << "triangles[" << triangleIndex << "]." << propertyName;
     std::string uniformName = ss.str();
 
-    std::cout << "setting triangle uniform: " << uniformName << " to: " << value << std::endl;
     shader.setFloat(uniformName.c_str(), value);
 }
 void SetTriangleUniform(Shader shader, const char* propertyName, int sphereIndex, const vec3 value) {
@@ -280,7 +277,6 @@ void SetTriangleUniform(Shader shader, const char* propertyName, int sphereIndex
     ss << "triangles[" << sphereIndex << "]." << propertyName;
     std::string uniformName = ss.str();
 
-    std::cout << "setting triangle uniform: " << uniformName << " to: " << value.x << ", " << value.y << ", " << value.z << std::endl;
     shader.setFloat(uniformName.c_str(), value.x, value.y, value.z);
 }
 void sendTriangles(Shader shader) {
@@ -295,8 +291,8 @@ void sendTriangles(Shader shader) {
   //      normalize(vec3(-0.1, 1.0, 0.1)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
         triangleMat0
     };
-    triangles = std::vector<Triangle>{};
-    triangles.push_back(triangle0);
+    // triangles = std::vector<Triangle>{};
+    // triangles.push_back(triangle0);
 
     shader.setInt("numTriangles", triangles.size());
 
