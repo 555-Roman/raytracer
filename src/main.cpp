@@ -8,6 +8,8 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "glm/glm.hpp"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 using namespace glm;
 
@@ -18,10 +20,13 @@ float deltaTime = 0.0f;
 bool isStill = true;
 unsigned int frameCount = 0;
 
-const float cameraMoveSpeed = 8;
+const float cameraMoveSpeed = 2;
 const float cameraRotateSpeed = 60;
 
 // #define FULLSCREEN
+unsigned int SCR_WIDTH = 960;
+unsigned int SCR_HEIGHT = 540;
+
 
 std::vector<Triangle> triangles;
 
@@ -36,6 +41,8 @@ vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
 
 int main() {
+    stbi_flip_vertically_on_write(1);
+
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -52,12 +59,10 @@ int main() {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 #ifdef FULLSCREEN
-    const unsigned int SCR_WIDTH = mode->width;
-    const unsigned int SCR_HEIGHT = mode->height;
+    SCR_WIDTH = mode->width;
+    SCR_HEIGHT = mode->height;
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", monitor, NULL);
 #else
-    const unsigned int SCR_WIDTH = mode->width / 2;
-    const unsigned int SCR_HEIGHT = mode->height / 2;
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
 #endif
     if (window == NULL)
@@ -185,7 +190,7 @@ int main() {
         shader.setFloat("cameraRight", cameraRight.x, cameraRight.y, cameraRight.z);
 
         shader.setInt("maxBounces", 4);
-        shader.setInt("samplesPerPixel", 3);
+        shader.setInt("samplesPerPixel", 1);
         shader.setUint("renderedFrames", frameCount);
         shader.setBool("accumulate", isStill);
 
@@ -257,7 +262,8 @@ void sendSpheres(Shader shader) {
     Material sphereMat3 = {vec3(0.0, 0.8, 0.0),  vec3(0.0), 0.0,  0.9};
     Material sphereMat4 = {vec3(0.8, 0.8, 0.8),  vec3(0.0), 0.0,  0.0};
     Material sphereMat5 = {vec3(0.0, 0.0, 0.0),  vec3(1.0), 3.5,  0.0};
-    Sphere sphere0 = {vec3(0.0, -101.0, 0.0), 100.0, sphereMat0};
+    // Sphere sphere0 = {vec3(0.0, -101.0, 0.0), 100.0, sphereMat0};
+    Sphere sphere0 = {vec3(0.0, -100.0, 0.0), 100.0, sphereMat0};
     Sphere sphere1 = {vec3(0.0, 1.0, 1.0), 1.0, sphereMat1};
     Sphere sphere2 = {vec3(-2.0, 0.75, 0.5), 0.75, sphereMat2};
     Sphere sphere3 = {vec3(-3.5, 0.5, 0.0), 0.5, sphereMat3};
@@ -265,10 +271,10 @@ void sendSpheres(Shader shader) {
     Sphere sphere5 = {vec3(-100.0, 50.0, 100.0), 100.0, sphereMat5};
     spheres = std::vector<Sphere>{};
     spheres.push_back(sphere0);
-    // spheres.push_back(sphere1);
-    // spheres.push_back(sphere2);
-    // spheres.push_back(sphere3);
-    // spheres.push_back(sphere4);
+    spheres.push_back(sphere1);
+    spheres.push_back(sphere2);
+    spheres.push_back(sphere3);
+    spheres.push_back(sphere4);
     spheres.push_back(sphere5);
 
     shader.setInt("numSpheres", spheres.size());
@@ -310,8 +316,8 @@ void sendTriangles(Shader shader) {
   //      normalize(vec3(-0.1, 1.0, 0.1)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
         triangleMat0
     };
-    // triangles = std::vector<Triangle>{};
-    // triangles.push_back(triangle0);
+    triangles = std::vector<Triangle>{};
+    triangles.push_back(triangle0);
 
     shader.setInt("numTriangles", triangles.size());
 
@@ -351,6 +357,12 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
+    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
+        unsigned char buffer[3 * SCR_WIDTH * SCR_HEIGHT];
+        glReadPixels(0, 0, SCR_WIDTH, SCR_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, &buffer);
+        stbi_write_png("screenshot.png", SCR_WIDTH, SCR_HEIGHT, 3, &buffer, 3 * SCR_WIDTH);
+    }
+
     vec3 toAdd = vec3(0, 0, 0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         toAdd += normalize(vec3(cameraForward.x, 0, cameraForward.z)) * cameraMoveSpeed * deltaTime;
@@ -365,7 +377,6 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         toAdd -= normalize(vec3(0, cameraUp.y, 0)) * cameraMoveSpeed * deltaTime;
     cameraPosition += toAdd;
-
     float pitch = 0;
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         pitch -= cameraRotateSpeed * deltaTime;
@@ -384,7 +395,6 @@ void processInput(GLFWwindow *window)
     cameraForward = rotateY(cameraForward, cameraYaw);
     cameraUp = rotateY(cameraUp, cameraYaw);
     cameraRight = rotateY(cameraRight, cameraYaw);
-
     isStill = toAdd == vec3(0) && pitch == 0 && yaw == 0;
     frameCount = isStill ? frameCount : 0;
 }
