@@ -23,9 +23,9 @@ unsigned int frameCount = 0;
 const float cameraMoveSpeed = 2;
 const float cameraRotateSpeed = 60;
 
-// #define FULLSCREEN
-unsigned int SCR_WIDTH = 960;
-unsigned int SCR_HEIGHT = 540;
+#define FULLSCREEN
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
 
 
 std::vector<Triangle> triangles;
@@ -59,8 +59,6 @@ int main() {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 #ifdef FULLSCREEN
-    SCR_WIDTH = mode->width;
-    SCR_HEIGHT = mode->height;
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", monitor, NULL);
 #else
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
@@ -351,6 +349,7 @@ vec3 rotateY(vec3 vector, float angle) {
 }
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
+unsigned char buffer[3 * SCR_WIDTH * SCR_HEIGHT];
 float cameraPitch = 0, cameraYaw = 0;
 void processInput(GLFWwindow *window)
 {
@@ -358,7 +357,6 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-        unsigned char buffer[3 * SCR_WIDTH * SCR_HEIGHT];
         glReadPixels(0, 0, SCR_WIDTH, SCR_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, &buffer);
         stbi_write_png("screenshot.png", SCR_WIDTH, SCR_HEIGHT, 3, &buffer, 3 * SCR_WIDTH);
     }
