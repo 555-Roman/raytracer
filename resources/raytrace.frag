@@ -141,26 +141,40 @@ HitInfo intersectRayTriangle(Ray ray, Triangle triangle) {
    return hitInfo;
 }
 
-HitInfo calculateRayIntersection(Ray ray) {
-   HitInfo closestHit;
-   closestHit.didHit = false;
-   closestHit.t = 1.0 / 0.0;
+bool intersectRayBox(Ray ray, vec3 boxMin, vec3 boxMax) {
+   vec3 invDir = 1 / ray.dir;
+   vec3 tMin = (boxMin - ray.origin) * invDir;
+   vec3 tMax = (boxMax - ray.origin) * invDir;
+   vec3 t1 = min(tMin, tMax);
+   vec3 t2 = max(tMin, tMax);
+   float tNear = max(max(t1.x, t1.y), t1.z);
+   float tFar = min(min(t2.x, t2.y), t2.z);
+   return tNear <= tFar;
+}
 
-   for (int i = 0; i < spheres.length(); i++) {
-      Sphere sphere = spheres[i];
-      HitInfo hitInfo = intersectRaySphere(ray, sphere);
-      if (hitInfo.didHit && hitInfo.t < closestHit.t) {
-         closestHit = hitInfo;
-      }
-   }
-   for (int i = 0; i < triangles.length(); i++) {
-      Triangle triangle = triangles[i];
-      HitInfo hitInfo = intersectRayTriangle(ray, triangle);
-      if (hitInfo.didHit && hitInfo.t < closestHit.t) {
-         closestHit = hitInfo;
-      }
-   }
-   return closestHit;
+uniform vec3 modelMin;
+uniform vec3 modelMax;
+HitInfo calculateRayIntersection(Ray ray) {
+    HitInfo closestHit;
+    closestHit.didHit = false;
+    closestHit.t = 1.0 / 0.0;
+
+    for (int i = 0; i < spheres.length(); i++) {
+        Sphere sphere = spheres[i];
+        HitInfo hitInfo = intersectRaySphere(ray, sphere);
+        if (hitInfo.didHit && hitInfo.t < closestHit.t) {
+            closestHit = hitInfo;
+        }
+    }
+    if (!intersectRayBox(ray, modelMin, modelMax)) return closestHit;
+    for (int i = 0; i < triangles.length(); i++) {
+        Triangle triangle = triangles[i];
+        HitInfo hitInfo = intersectRayTriangle(ray, triangle);
+        if (hitInfo.didHit && hitInfo.t < closestHit.t) {
+            closestHit = hitInfo;
+        }
+    }
+    return closestHit;
 }
 
 vec3 GetEnvironmentLight(Ray ray) {

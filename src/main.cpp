@@ -155,6 +155,20 @@ int main() {
     for (Triangle triangle : trianglesFromModel) {
         triangles.push_back(triangle);
     }
+    std::cout << triangles.size() << std::endl;
+    std::cout << sizeof(Triangle) << std::endl;
+    std::cout << triangles.size() * sizeof(Triangle) << std::endl;
+    vec3 monkeMin = vec3(triangles[0].posA);
+    vec3 monkeMax = vec3(triangles[0].posA);
+    for (Triangle triangle : triangles) {
+        monkeMin = min(monkeMin, vec3(triangle.posA));
+        monkeMin = min(monkeMin, vec3(triangle.posB));
+        monkeMin = min(monkeMin, vec3(triangle.posC));
+
+        monkeMax = max(monkeMax, vec3(triangle.posB));
+        monkeMax = max(monkeMax, vec3(triangle.posA));
+        monkeMax = max(monkeMax, vec3(triangle.posC));
+    }
     sendTriangles();
 
     // uncomment this call to draw in wireframe polygons.
@@ -197,6 +211,9 @@ int main() {
         shader.setInt("samplesPerPixel", 1);
         shader.setUint("renderedFrames", frameCount);
         shader.setBool("accumulate", isStill);
+
+        shader.setFloat("modelMin", monkeMin.x, monkeMin.y, monkeMin.z);
+        shader.setFloat("modelMax", monkeMax.x, monkeMax.y, monkeMax.z);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
