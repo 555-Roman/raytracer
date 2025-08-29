@@ -9,6 +9,8 @@
 #include "GLFW/glfw3.h"
 #include "glm/glm.hpp"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <algorithm>
+
 #include "stb_image_write.h"
 
 using namespace glm;
@@ -24,8 +26,11 @@ unsigned int frameCount = 0;
 const float cameraMoveSpeed = 2;
 const float cameraRotateSpeed = 60;
 
-// #define FULLSCREEN
-#ifndef FULLSCREEN
+#define FULLSCREEN
+#ifdef FULLSCREEN
+const unsigned int SCR_WIDTH = 1920;
+const unsigned int SCR_HEIGHT = 1080;
+#else
 const unsigned int SCR_WIDTH = 1920 / 2;
 const unsigned int SCR_HEIGHT = 1080 / 2;
 #endif
@@ -61,9 +66,6 @@ int main() {
     // --------------------
 #ifdef FULLSCREEN
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-    const unsigned int SCR_WIDTH = mode->width();
-    const unsigned int SCR_HEIGHT = mode->height();
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", monitor, NULL);
 #else
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
@@ -201,7 +203,7 @@ int main() {
         shader.setUint("renderedFrames", frameCount);
         shader.setBool("accumulate", isStill);
 
-        sendTriangles(shader);
+        // sendTriangles(shader);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
@@ -247,35 +249,38 @@ int main() {
 
 
 
-void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, const float value) {
-    std::ostringstream ss;
-    ss << "spheres[" << sphereIndex << "]." << propertyName;
-    std::string uniformName = ss.str();
-
-    shader.setFloat(uniformName.c_str(), value);
-}
-void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, const vec3 value) {
-    std::ostringstream ss;
-    ss << "spheres[" << sphereIndex << "]." << propertyName;
-    std::string uniformName = ss.str();
-
-    shader.setFloat(uniformName.c_str(), value.x, value.y, value.z);
-}
 void sendSpheres() {
-    Sphere sphere0 = {vec4(0.0, -100.0, 0.0, 100.0), vec4(0.8, 0.0, 0.8, 0.0), vec4(0.0)};
-    Sphere sphere1 = {vec4(0.0, 1.0, 1.0, 1.0), vec4(0.8, 0.0, 0.0, 0.0), vec4(0.0)};
-    Sphere sphere2 = {vec4(-2.0, 0.75, 0.5, 0.75), vec4(0.8, 0.8, 0.0, 0.0), vec4(0.0)};
-    Sphere sphere3 = {vec4(-3.5, 0.5, 0.0, 0.5), vec4(0.0, 0.8, 0.0, 0.9), vec4(0.0)};
-    Sphere sphere4 = {vec4(2.5, 1.25, 0.0, 1.25), vec4(0.8, 0.8, 0.8, 0.0), vec4(0.0)};
-    Sphere sphere5 = {vec4(-100.0, 50.0, 100.0, 100.0), vec4(0.0), vec4(1.0, 1.0, 1.0, 3.5)};
     std::vector<Sphere> spheres;
-    spheres.push_back(sphere0);
-    spheres.push_back(sphere1);
-    spheres.push_back(sphere2);
-    spheres.push_back(sphere3);
-    spheres.push_back(sphere4);
-    spheres.push_back(sphere5);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * sizeof(Sphere), &(spheres[0]), GL_DYNAMIC_COPY);
+
+    spheres.push_back(Sphere{vec4(0, -1000, 0, 1000), vec4(0.5, 0.5, 0.5, 0.0), vec4(0.0)});
+
+    for (int a = -11; a < 11; a++) {
+        for (int b = -11; b < 11; b++) {
+            float randomMat = std::rand()/(float)0x7fff;
+            vec3 center = vec3(a + 0.9*std::rand()/(float)0x7fff, 0.2, b + 0.9*std::rand()/(float)0x7fff);
+
+            if ((center - vec3(4, 0.2, 0)).length() > 0.9) {
+                if (randomMat < 0.8) {
+                    // diffuse
+                    auto albedo = vec3(std::rand()/(float)0x7fff, std::rand()/(float)0x7fff, std::rand()/(float)0x7fff) * vec3(std::rand()/(float)0x7fff, std::rand()/(float)0x7fff, std::rand()/(float)0x7fff);
+                    spheres.push_back(Sphere{vec4(center, 0.2), vec4(albedo, 0.0), vec4(0.0)});
+                } else {
+                    // metal
+                    auto albedo = vec3(std::rand()/(float)0x7fff/2.0+.5, std::rand()/(float)0x7fff/2.0+.5, std::rand()/(float)0x7fff/2.0+.5);
+                    spheres.push_back(Sphere{vec4(center, 0.2), vec4(albedo, std::rand()/(float)0x7fff/2.0+.5), vec4(0.0)});
+                }
+            }
+        }
+    }
+
+    spheres.push_back(Sphere{vec4(0, 1, 0, 1.0), vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0)});
+
+    spheres.push_back(Sphere{vec4(-4, 1, 0, 1.0), vec4(0.4, 0.2, 0.1, 0.0), vec4(0.0)});
+
+    spheres.push_back(Sphere{vec4(4, 1, 0, 1.0), vec4(0.7, 0.6, 0.5, 1.0), vec4(0.0)});
+
+
+    glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), &(spheres[0]), GL_DYNAMIC_COPY);
 }
 
 void SetTriangleUniform(Shader shader, const char* propertyName, int triangleIndex, const float value) {
