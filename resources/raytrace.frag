@@ -55,21 +55,23 @@ struct Sphere {
    vec4 color_smoothness;
    vec4 emissionColor_emissionStrength;
 };
-layout (std430) buffer SphereBuffer {
+layout (std430, binding = 0) buffer SphereBuffer {
    Sphere spheres[];
 };
 
-#define MAX_TRIANGLES 12
-uniform int numTriangles;
-uniform struct Triangle {
-   vec3 posA;
-   vec3 posB;
-   vec3 posC;
-   vec3 normalA;
-   vec3 normalB;
-   vec3 normalC;
-   Material material;
-} triangles[MAX_TRIANGLES];
+struct Triangle {
+   vec4 posA;
+   vec4 posB;
+   vec4 posC;
+   vec4 normalA;
+   vec4 normalB;
+   vec4 normalC;
+   vec4 color_smoothness;
+   vec4 emissionColor_emissionStrength;
+};
+layout (std430, binding = 1) buffer TriangleBuffer {
+   Triangle triangles[];
+};
 
 struct HitInfo {
    bool didHit;
@@ -111,10 +113,10 @@ HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
 }
 
 HitInfo intersectRayTriangle(Ray ray, Triangle triangle) {
-   vec3 edgeAB = triangle.posB - triangle.posA;
-   vec3 edgeAC = triangle.posC - triangle.posA;
+   vec3 edgeAB = triangle.posB.xyz - triangle.posA.xyz;
+   vec3 edgeAC = triangle.posC.xyz - triangle.posA.xyz;
    vec3 normalVector =  cross(edgeAB, edgeAC);
-   vec3 ao = ray.origin - triangle.posA;
+   vec3 ao = ray.origin - triangle.posA.xyz;
    vec3 dao = cross(ao, ray.dir);
 
    float determinant = -dot(ray.dir, normalVector);
@@ -128,9 +130,14 @@ HitInfo intersectRayTriangle(Ray ray, Triangle triangle) {
    HitInfo hitInfo;
    hitInfo.didHit = determinant >= 1e-6 && t > 0 && u >= 0 && v >= 0 && w >= 0;
    hitInfo.pos = ray.origin + ray.dir * t;
-   hitInfo.normal = normalize(triangle.normalA * w + triangle.normalB * u + triangle.normalC * v);
+   hitInfo.normal = normalize(triangle.normalA.xyz * w + triangle.normalB.xyz * u + triangle.normalC.xyz * v);
    hitInfo.t = t;
-   hitInfo.material = triangle.material;
+   Material material;
+   material.color = triangle.color_smoothness.rgb;
+   material.emissionColor = triangle.emissionColor_emissionStrength.rgb;
+   material.emissionStrength = triangle.emissionColor_emissionStrength.a;
+   material.smoothness = triangle.color_smoothness.a;
+   hitInfo.material = material;
    return hitInfo;
 }
 
@@ -146,7 +153,7 @@ HitInfo calculateRayIntersection(Ray ray) {
          closestHit = hitInfo;
       }
    }
-   for (int i = 0; i < numTriangles; i++) {
+   for (int i = 0; i < triangles.length(); i++) {
       Triangle triangle = triangles[i];
       HitInfo hitInfo = intersectRayTriangle(ray, triangle);
       if (hitInfo.didHit && hitInfo.t < closestHit.t) {

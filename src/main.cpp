@@ -9,14 +9,12 @@
 #include "GLFW/glfw3.h"
 #include "glm/glm.hpp"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <algorithm>
-
 #include "stb_image_write.h"
 
 using namespace glm;
 
 void sendSpheres();
-void sendTriangles(Shader shader);
+void sendTriangles();
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 float deltaTime = 0.0f;
@@ -35,7 +33,8 @@ const unsigned int SCR_WIDTH = 1920 / 2;
 const unsigned int SCR_HEIGHT = 1080 / 2;
 #endif
 
-GLuint ssbo;
+GLuint sphereSSBO;
+GLuint triangleSSBO;
 std::vector<Triangle> triangles;
 
 // vec3 cameraPosition = vec3(2.0, 3.0, -5.0);
@@ -43,7 +42,7 @@ std::vector<Triangle> triangles;
 // vec3 cameraUp = vec3(-0.18074256993863339, 0.8735890880367281, 0.45185642484658345);
 // vec3 cameraRight = vec3(0.9284766908852593, 0.0, 0.3713906763541037);
 
-vec3 cameraPosition = vec3(0);
+vec3 cameraPosition = vec3(5);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -146,21 +145,17 @@ int main() {
     Shader shader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/raytrace.frag");
     Shader displayShader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/display.frag");
 
-    glGenBuffers(1, &ssbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glGenBuffers(1, &sphereSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sphereSSBO);
     sendSpheres();
 
+    glGenBuffers(1, &triangleSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, triangleSSBO);
     std::vector<Triangle> trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/model.obj");
     for (Triangle triangle : trianglesFromModel) {
-        // std::cout << "pushing triangle" << std::endl;
-        // std::cout << " posA: " << triangle.posA.x << ", " << triangle.posA.y << ", " << triangle.posA.z << std::endl;
-        // std::cout << " posB: " << triangle.posB.x << ", " << triangle.posB.y << ", " << triangle.posB.z << std::endl;
-        // std::cout << " posC: " << triangle.posC.x << ", " << triangle.posC.y << ", " << triangle.posC.z << std::endl;
-        // std::cout << " normalA: " << triangle.normalA.x << ", " << triangle.normalA.y << ", " << triangle.normalA.z << std::endl;
-        // std::cout << " normalB: " << triangle.normalB.x << ", " << triangle.normalB.y << ", " << triangle.normalB.z << std::endl;
-        // std::cout << " normalC: " << triangle.normalC.x << ", " << triangle.normalC.y << ", " << triangle.normalC.z << std::endl;
         triangles.push_back(triangle);
     }
+    sendTriangles();
 
     // uncomment this call to draw in wireframe polygons.
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -189,7 +184,7 @@ int main() {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, accumTextures[writeIdx], 0);
 
         shader.use();
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sphereSSBO);
         shader.setUint("uResolution", SCR_WIDTH, SCR_HEIGHT);
         shader.setFloat("uFocalLength", tan(45.0 / 180.0 * 3.1415926)*.5 * (float)SCR_HEIGHT);
 
@@ -202,8 +197,6 @@ int main() {
         shader.setInt("samplesPerPixel", 1);
         shader.setUint("renderedFrames", frameCount);
         shader.setBool("accumulate", isStill);
-
-        // sendTriangles(shader);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
@@ -251,77 +244,26 @@ int main() {
 
 void sendSpheres() {
     std::vector<Sphere> spheres;
-
-    spheres.push_back(Sphere{vec4(0, -1000, 0, 1000), vec4(0.5, 0.5, 0.5, 0.0), vec4(0.0)});
-
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
-            float randomMat = std::rand()/(float)0x7fff;
-            vec3 center = vec3(a + 0.9*std::rand()/(float)0x7fff, 0.2, b + 0.9*std::rand()/(float)0x7fff);
-
-            if ((center - vec3(4, 0.2, 0)).length() > 0.9) {
-                if (randomMat < 0.8) {
-                    // diffuse
-                    auto albedo = vec3(std::rand()/(float)0x7fff, std::rand()/(float)0x7fff, std::rand()/(float)0x7fff) * vec3(std::rand()/(float)0x7fff, std::rand()/(float)0x7fff, std::rand()/(float)0x7fff);
-                    spheres.push_back(Sphere{vec4(center, 0.2), vec4(albedo, 0.0), vec4(0.0)});
-                } else {
-                    // metal
-                    auto albedo = vec3(std::rand()/(float)0x7fff/2.0+.5, std::rand()/(float)0x7fff/2.0+.5, std::rand()/(float)0x7fff/2.0+.5);
-                    spheres.push_back(Sphere{vec4(center, 0.2), vec4(albedo, std::rand()/(float)0x7fff/2.0+.5), vec4(0.0)});
-                }
-            }
-        }
-    }
-
-    spheres.push_back(Sphere{vec4(0, 1, 0, 1.0), vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0)});
-
-    spheres.push_back(Sphere{vec4(-4, 1, 0, 1.0), vec4(0.4, 0.2, 0.1, 0.0), vec4(0.0)});
-
-    spheres.push_back(Sphere{vec4(4, 1, 0, 1.0), vec4(0.7, 0.6, 0.5, 1.0), vec4(0.0)});
-
+    Sphere mySphere0 = Sphere{vec4(0.0, -1001.0, 0.0, 1000.0), vec4(0.8, 0.0, 0.8, 0.0), vec4(0.0)};
+    Sphere mySphere1 = Sphere{vec4(-100.0, 50.0, 200.0, 100.0), vec4(0.0), vec4(1.0, 1.0, 1.0, 3.5)};
+    spheres.push_back(mySphere0);
+    spheres.push_back(mySphere1);
 
     glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), &(spheres[0]), GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sphereSSBO);
 }
 
-void SetTriangleUniform(Shader shader, const char* propertyName, int triangleIndex, const float value) {
-    std::ostringstream ss;
-    ss << "triangles[" << triangleIndex << "]." << propertyName;
-    std::string uniformName = ss.str();
-
-    shader.setFloat(uniformName.c_str(), value);
-}
-void SetTriangleUniform(Shader shader, const char* propertyName, int sphereIndex, const vec3 value) {
-    std::ostringstream ss;
-    ss << "triangles[" << sphereIndex << "]." << propertyName;
-    std::string uniformName = ss.str();
-
-    shader.setFloat(uniformName.c_str(), value.x, value.y, value.z);
-}
-void sendTriangles(Shader shader) {
-    Material triangleMat0 = {vec3(1.0), vec3(0.0), 0.0, 1.0};
+void sendTriangles() {
     Triangle triangle0 = {
-        vec3(0.0, 0.5, -1.0), vec3(3.0, 0.5, -1.0), vec3(0.0, 0.5, -4.0),
-        normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
-        triangleMat0
+        vec4(0.0, 0.5, -1.0, 0.0), vec4(3.0, 0.5, -1.0, 0.0), vec4(0.0, 0.5, -4.0, 0.0),
+        normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)),
+        vec4(1.0), vec4(0.0)
     };
-    triangles = std::vector<Triangle>{};
-    triangles.push_back(triangle0);
+    // triangles = std::vector<Triangle>();
+    // triangles.push_back(triangle0);
 
-    shader.setInt("numTriangles", triangles.size());
-
-    for (int i = 0; i < triangles.size(); i++) {
-        SetTriangleUniform(shader, "posA", i, triangles[i].posA);
-        SetTriangleUniform(shader, "posB", i, triangles[i].posB);
-        SetTriangleUniform(shader, "posC", i, triangles[i].posC);
-        SetTriangleUniform(shader, "normalA", i, triangles[i].normalA);
-        SetTriangleUniform(shader, "normalB", i, triangles[i].normalB);
-        SetTriangleUniform(shader, "normalC", i, triangles[i].normalC);
-
-        SetTriangleUniform(shader, "material.color", i, triangles[i].material.color);
-        SetTriangleUniform(shader, "material.emissionColor", i, triangles[i].material.emissionColor);
-        SetTriangleUniform(shader, "material.emissionStrength", i, triangles[i].material.emissionStrength);
-        SetTriangleUniform(shader, "material.smoothness", i, triangles[i].material.smoothness);
-    }
+    glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), &(triangles[0]), GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, triangleSSBO);
 }
 
 

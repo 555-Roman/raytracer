@@ -29,13 +29,14 @@ struct Sphere {
     vec4 emissionColor_emissionStrength;
 };
 struct Triangle {
-    vec3 posA;
-    vec3 posB;
-    vec3 posC;
-    vec3 normalA;
-    vec3 normalB;
-    vec3 normalC;
-    Material material;
+    vec4 posA;
+    vec4 posB;
+    vec4 posC;
+    vec4 normalA;
+    vec4 normalB;
+    vec4 normalC;
+    vec4 color_smoothness;
+    vec4 emissionColor_emissionStrength;
 };
 
 
@@ -184,7 +185,11 @@ std::vector<Triangle> getTrianglesFromOBJ(const char* filePath) {
             // std::cout << " normalB: " << normalB.x << ", " << normalB.y << ", " << normalB.z << std::endl;
             // std::cout << " normalC: " << normalC.x << ", " << normalC.y << ", " << normalC.z << std::endl;
 
-            Triangle toPush = {posA, posB, posC, normalA, normalB, normalC, defaultMaterial};
+            Triangle toPush = {
+                vec4(posA, 0.0), vec4(posB, 0.0), vec4(posC, 0.0),
+                vec4(normalA, 0.0), vec4(normalB, 0.0), vec4(normalC, 0.0),
+                vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0)
+            };
             triangles.push_back(toPush);
 
             faceIndices = ivec3(0, faceIndices.z, faceIndices.z+1);
