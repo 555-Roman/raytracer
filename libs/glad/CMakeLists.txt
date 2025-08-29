@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(glad)
+project(.)
 
 add_library(glad)
 target_sources(glad PRIVATE src/glad.c)

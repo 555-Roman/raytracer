@@ -13,7 +13,8 @@
 
 using namespace glm;
 
-void sendObjects(Shader shader);
+void sendSpheres();
+void sendTriangles(Shader shader);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 float deltaTime = 0.0f;
@@ -23,11 +24,13 @@ unsigned int frameCount = 0;
 const float cameraMoveSpeed = 2;
 const float cameraRotateSpeed = 60;
 
-#define FULLSCREEN
-const unsigned int SCR_WIDTH = 1920;
-const unsigned int SCR_HEIGHT = 1080;
+// #define FULLSCREEN
+#ifndef FULLSCREEN
+const unsigned int SCR_WIDTH = 1920 / 2;
+const unsigned int SCR_HEIGHT = 1080 / 2;
+#endif
 
-
+GLuint ssbo;
 std::vector<Triangle> triangles;
 
 // vec3 cameraPosition = vec3(2.0, 3.0, -5.0);
@@ -46,8 +49,8 @@ int main() {
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
@@ -56,9 +59,11 @@ int main() {
 
     // glfw window creation
     // --------------------
+#ifdef FULLSCREEN
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-#ifdef FULLSCREEN
+    const unsigned int SCR_WIDTH = mode->width();
+    const unsigned int SCR_HEIGHT = mode->height();
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", monitor, NULL);
 #else
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
@@ -137,8 +142,11 @@ int main() {
 
 
     Shader shader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/raytrace.frag");
-
     Shader displayShader(RESOURCES_PATH "/default.vert", RESOURCES_PATH "/display.frag");
+
+    glGenBuffers(1, &ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    sendSpheres();
 
     std::vector<Triangle> trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/model.obj");
     for (Triangle triangle : trianglesFromModel) {
@@ -179,6 +187,7 @@ int main() {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, accumTextures[writeIdx], 0);
 
         shader.use();
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
         shader.setUint("uResolution", SCR_WIDTH, SCR_HEIGHT);
         shader.setFloat("uFocalLength", tan(45.0 / 180.0 * 3.1415926)*.5 * (float)SCR_HEIGHT);
 
@@ -192,7 +201,7 @@ int main() {
         shader.setUint("renderedFrames", frameCount);
         shader.setBool("accumulate", isStill);
 
-        sendObjects(shader);
+        sendTriangles(shader);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
@@ -238,7 +247,6 @@ int main() {
 
 
 
-std::vector<Sphere> spheres;
 void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, const float value) {
     std::ostringstream ss;
     ss << "spheres[" << sphereIndex << "]." << propertyName;
@@ -253,39 +261,21 @@ void SetSphereUniform(Shader shader, const char* propertyName, int sphereIndex, 
 
     shader.setFloat(uniformName.c_str(), value.x, value.y, value.z);
 }
-void sendSpheres(Shader shader) {
-    Material sphereMat0 = {vec3(0.8, 0.0, 0.8),  vec3(0.0), 0.0,  0.0};
-    Material sphereMat1 = {vec3(0.8, 0.0, 0.0),  vec3(0.0), 0.0,  0.0};
-    Material sphereMat2 = {vec3(0.8, 0.8, 0.0),  vec3(0.0), 0.0,  0.0};
-    Material sphereMat3 = {vec3(0.0, 0.8, 0.0),  vec3(0.0), 0.0,  0.9};
-    Material sphereMat4 = {vec3(0.8, 0.8, 0.8),  vec3(0.0), 0.0,  0.0};
-    Material sphereMat5 = {vec3(0.0, 0.0, 0.0),  vec3(1.0), 3.5,  0.0};
-    // Sphere sphere0 = {vec3(0.0, -101.0, 0.0), 100.0, sphereMat0};
-    Sphere sphere0 = {vec3(0.0, -100.0, 0.0), 100.0, sphereMat0};
-    Sphere sphere1 = {vec3(0.0, 1.0, 1.0), 1.0, sphereMat1};
-    Sphere sphere2 = {vec3(-2.0, 0.75, 0.5), 0.75, sphereMat2};
-    Sphere sphere3 = {vec3(-3.5, 0.5, 0.0), 0.5, sphereMat3};
-    Sphere sphere4 = {vec3(2.5, 1.25, 0.0), 1.25, sphereMat4};
-    Sphere sphere5 = {vec3(-100.0, 50.0, 100.0), 100.0, sphereMat5};
-    spheres = std::vector<Sphere>{};
+void sendSpheres() {
+    Sphere sphere0 = {vec4(0.0, -100.0, 0.0, 100.0), vec4(0.8, 0.0, 0.8, 0.0), vec4(0.0)};
+    Sphere sphere1 = {vec4(0.0, 1.0, 1.0, 1.0), vec4(0.8, 0.0, 0.0, 0.0), vec4(0.0)};
+    Sphere sphere2 = {vec4(-2.0, 0.75, 0.5, 0.75), vec4(0.8, 0.8, 0.0, 0.0), vec4(0.0)};
+    Sphere sphere3 = {vec4(-3.5, 0.5, 0.0, 0.5), vec4(0.0, 0.8, 0.0, 0.9), vec4(0.0)};
+    Sphere sphere4 = {vec4(2.5, 1.25, 0.0, 1.25), vec4(0.8, 0.8, 0.8, 0.0), vec4(0.0)};
+    Sphere sphere5 = {vec4(-100.0, 50.0, 100.0, 100.0), vec4(0.0), vec4(1.0, 1.0, 1.0, 3.5)};
+    std::vector<Sphere> spheres;
     spheres.push_back(sphere0);
     spheres.push_back(sphere1);
     spheres.push_back(sphere2);
     spheres.push_back(sphere3);
     spheres.push_back(sphere4);
     spheres.push_back(sphere5);
-
-    shader.setInt("numSpheres", spheres.size());
-
-    for (int i = 0; i < spheres.size(); ++i) {
-        SetSphereUniform(shader, "pos", i, spheres[i].pos);
-        SetSphereUniform(shader, "radius", i, spheres[i].radius);
-
-        SetSphereUniform(shader, "material.color", i, spheres[i].material.color);
-        SetSphereUniform(shader, "material.emissionColor", i, spheres[i].material.emissionColor);
-        SetSphereUniform(shader, "material.emissionStrength", i, spheres[i].material.emissionStrength);
-        SetSphereUniform(shader, "material.smoothness", i, spheres[i].material.smoothness);
-    }
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 6 * sizeof(Sphere), &(spheres[0]), GL_DYNAMIC_COPY);
 }
 
 void SetTriangleUniform(Shader shader, const char* propertyName, int triangleIndex, const float value) {
@@ -305,13 +295,8 @@ void SetTriangleUniform(Shader shader, const char* propertyName, int sphereIndex
 void sendTriangles(Shader shader) {
     Material triangleMat0 = {vec3(1.0), vec3(0.0), 0.0, 1.0};
     Triangle triangle0 = {
-        //      vec3(0.0, 0.0, -1.0), vec3(0.0, 0.0, -4.0), vec3(3.0, 0.0, -1.0),
-        //      vec3(0.0, 0.0, -1.0), vec3(3.0, 0.0, -1.0), vec3(0.0, 0.0, -4.0),
-        //      vec3(0.0, 0.5, -1.0), vec3(0.0, 0.5, -4.0), vec3(3.0, 0.5, -1.0),
         vec3(0.0, 0.5, -1.0), vec3(3.0, 0.5, -1.0), vec3(0.0, 0.5, -4.0),
-  //      vec3(0.0, 0.5, -1.0), vec3(3.0, 0.5, 0.0), vec3(0.0, 0.5, -4.0),
-     normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
-  //      normalize(vec3(-0.1, 1.0, 0.1)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
+        normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)), normalize(vec3(0.0, 1.0, 0.0)),
         triangleMat0
     };
     triangles = std::vector<Triangle>{};
@@ -319,7 +304,7 @@ void sendTriangles(Shader shader) {
 
     shader.setInt("numTriangles", triangles.size());
 
-    for (int i = 0; i < triangles.size(); ++i) {
+    for (int i = 0; i < triangles.size(); i++) {
         SetTriangleUniform(shader, "posA", i, triangles[i].posA);
         SetTriangleUniform(shader, "posB", i, triangles[i].posB);
         SetTriangleUniform(shader, "posC", i, triangles[i].posC);
@@ -334,10 +319,6 @@ void sendTriangles(Shader shader) {
     }
 }
 
-void sendObjects(Shader shader) {
-    sendSpheres(shader);
-    sendTriangles(shader);
-}
 
 vec3 rotateX(vec3 vector, float angle) {
     float rad = radians(angle);

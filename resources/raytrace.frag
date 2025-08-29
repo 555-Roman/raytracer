@@ -1,4 +1,4 @@
-#version 330 core
+#version 460 core
 
 uniform uvec2 uResolution;
 uniform vec3 cameraPosition;
@@ -50,13 +50,14 @@ struct Material {
 };
 
 
-#define MAX_SPHERES 6
-uniform int numSpheres;
-uniform struct Sphere {
-   vec3 pos;
-   float radius;
-   Material material;
-} spheres[MAX_SPHERES];
+struct Sphere {
+   vec4 pos_radius;
+   vec4 color_smoothness;
+   vec4 emissionColor_emissionStrength;
+};
+layout (std430) buffer SphereBuffer {
+   Sphere spheres[];
+};
 
 #define MAX_TRIANGLES 12
 uniform int numTriangles;
@@ -84,10 +85,10 @@ HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
    HitInfo hitInfo;
    hitInfo.didHit = false;
 
-   vec3 offsetRayOrigin = ray.origin - sphere.pos;
+   vec3 offsetRayOrigin = ray.origin - sphere.pos_radius.xyz;
    float a = dot(ray.dir, ray.dir);
    float b = 2 * dot(offsetRayOrigin, ray.dir);
-   float c = dot(offsetRayOrigin, offsetRayOrigin) - sphere.radius * sphere.radius;
+   float c = dot(offsetRayOrigin, offsetRayOrigin) - sphere.pos_radius.w * sphere.pos_radius.w;
    float discriminant = b * b - 4 * a * c;
 
    if (discriminant >= 0) {
@@ -97,8 +98,13 @@ HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
          hitInfo.didHit = true;
          hitInfo.t = t;
          hitInfo.pos = ray.origin + ray.dir * t;
-         hitInfo.normal = normalize(hitInfo.pos - sphere.pos);
-         hitInfo.material = sphere.material;
+         hitInfo.normal = normalize(hitInfo.pos - sphere.pos_radius.xyz);
+         Material material;
+         material.color = sphere.color_smoothness.rgb;
+         material.emissionColor = sphere.emissionColor_emissionStrength.rgb;
+         material.emissionStrength = sphere.emissionColor_emissionStrength.a;
+         material.smoothness = sphere.color_smoothness.a;
+         hitInfo.material = material;
       }
    }
    return hitInfo;
@@ -133,7 +139,7 @@ HitInfo calculateRayIntersection(Ray ray) {
    closestHit.didHit = false;
    closestHit.t = 1.0 / 0.0;
 
-   for (int i = 0; i < numSpheres; i++) {
+   for (int i = 0; i < spheres.length(); i++) {
       Sphere sphere = spheres[i];
       HitInfo hitInfo = intersectRaySphere(ray, sphere);
       if (hitInfo.didHit && hitInfo.t < closestHit.t) {

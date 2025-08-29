@@ -18,10 +18,15 @@ struct Material {
     float smoothness;
 };
 Material defaultMaterial = {vec3(1.0), vec3(0.0), 0.0, 0.0};
-struct Sphere {
+/*struct Sphere {
     vec3 pos;
     float radius;
     Material material;
+};*/
+struct Sphere {
+    vec4 pos_radius;
+    vec4 color_smoothness;
+    vec4 emissionColor_emissionStrength;
 };
 struct Triangle {
     vec3 posA;
