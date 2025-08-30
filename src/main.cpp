@@ -15,6 +15,7 @@ using namespace glm;
 
 void sendSpheres();
 void sendTriangles();
+void sendModels();
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 float deltaTime = 0.0f;
@@ -36,13 +37,14 @@ const unsigned int SCR_HEIGHT = 1080 / 2;
 GLuint sphereSSBO;
 GLuint triangleSSBO;
 std::vector<Triangle> triangles;
+GLuint modelSSBO;
 
 // vec3 cameraPosition = vec3(2.0, 3.0, -5.0);
 // vec3 cameraForward = vec3(-0.3244428422615251, -0.48666426339228763, 0.8111071056538127);
 // vec3 cameraUp = vec3(-0.18074256993863339, 0.8735890880367281, 0.45185642484658345);
 // vec3 cameraRight = vec3(0.9284766908852593, 0.0, 0.3713906763541037);
 
-vec3 cameraPosition = vec3(5);
+vec3 cameraPosition = vec3(0.81463, 1.59022, 2.72685);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -169,7 +171,16 @@ int main() {
         monkeMax = max(monkeMax, vec3(triangle.posA));
         monkeMax = max(monkeMax, vec3(triangle.posC));
     }
+    std::cout << monkeMin.x << ", " << monkeMin.y << ", " << monkeMin.z << std::endl;
+    std::cout << monkeMax.x << ", " << monkeMax.y << ", " << monkeMax.z << std::endl;
+    std::cout << triangles[0].posA.x << ", " << triangles[0].posA.y << ", " << triangles[0].posA.z << ", " << triangles[0].posA.w << std::endl;
+    std::cout << triangles[0].posB.x << ", " << triangles[0].posB.y << ", " << triangles[0].posB.z << ", " << triangles[0].posB.w << std::endl;
+    std::cout << triangles[0].posC.x << ", " << triangles[0].posC.y << ", " << triangles[0].posC.z << ", " << triangles[0].posC.w << std::endl;
     sendTriangles();
+
+    glGenBuffers(1, &modelSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, modelSSBO);
+    sendModels();
 
     // uncomment this call to draw in wireframe polygons.
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -271,16 +282,37 @@ void sendSpheres() {
 }
 
 void sendTriangles() {
-    Triangle triangle0 = {
-        vec4(0.0, 0.5, -1.0, 0.0), vec4(3.0, 0.5, -1.0, 0.0), vec4(0.0, 0.5, -4.0, 0.0),
-        normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)),
-        vec4(1.0), vec4(0.0)
-    };
+    // Triangle triangle0 = {
+        // vec4(0.0, 0.5, -1.0, 0.0), vec4(3.0, 0.5, -1.0, 0.0), vec4(0.0, 0.5, -4.0, 0.0),
+        // normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)),
+        // vec4(1.0), vec4(0.0)
+    // };
     // triangles = std::vector<Triangle>();
     // triangles.push_back(triangle0);
 
     glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), &(triangles[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, triangleSSBO);
+}
+void sendModels() {
+    Model model0 = {
+        0, 112, {0, 0},
+        vec4(-1.36719f, -0.984375f, -0.851562f, 0.0f),
+        vec4(1.36719, 0.984375, 0.851562, 0.0),
+        vec4(0.0), vec4(1.0)
+    };
+    Model model1 = {
+        112, 856, {0, 0},
+        vec4(-1.36719f, -0.984375f, -0.851562f, 0.0f),
+        vec4(1.36719, 0.984375, 0.851562, 0.0),
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0)
+    };
+    std::vector<Model> models;
+    models.push_back(model0);
+    models.push_back(model1);
+    // Model myModel = {0, 64};
+    std::cout << sizeof(Model) << std::endl;
+    glBufferData(GL_SHADER_STORAGE_BUFFER, models.size() * sizeof(Model), &(models[0]), GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, modelSSBO);
 }
 
 
@@ -295,7 +327,7 @@ vec3 rotateY(vec3 vector, float angle) {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 unsigned char buffer[3 * SCR_WIDTH * SCR_HEIGHT];
-float cameraPitch = 0, cameraYaw = 0;
+float cameraPitch = 34.9499, cameraYaw = 128.802;
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -304,6 +336,11 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
         glReadPixels(0, 0, SCR_WIDTH, SCR_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, &buffer);
         stbi_write_png("screenshot.png", SCR_WIDTH, SCR_HEIGHT, 3, &buffer, 3 * SCR_WIDTH);
+    }
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
+        std::cout << "Camera Data:" << std::endl;
+        std::cout << cameraPosition.x << ", " << cameraPosition.y << ", " << cameraPosition.z << std::endl;
+        std::cout << cameraPitch << ", " << cameraYaw << std::endl;
     }
 
     vec3 toAdd = vec3(0, 0, 0);

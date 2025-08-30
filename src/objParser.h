@@ -35,6 +35,13 @@ struct Triangle {
     vec4 normalA;
     vec4 normalB;
     vec4 normalC;
+};
+struct Model {
+    uint triangleIndex;
+    uint triangleCount;
+    uint padding[2];
+    vec4 boundMin;
+    vec4 boundMax;
     vec4 color_smoothness;
     vec4 emissionColor_emissionStrength;
 };
@@ -187,8 +194,7 @@ std::vector<Triangle> getTrianglesFromOBJ(const char* filePath) {
 
             Triangle toPush = {
                 vec4(posA, 0.0), vec4(posB, 0.0), vec4(posC, 0.0),
-                vec4(normalA, 0.0), vec4(normalB, 0.0), vec4(normalC, 0.0),
-                vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0)
+                vec4(normalA, 0.0), vec4(normalB, 0.0), vec4(normalC, 0.0)
             };
             triangles.push_back(toPush);
 
