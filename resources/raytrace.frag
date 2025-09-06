@@ -75,10 +75,16 @@ struct Model {
     uint triangleIndex;
     uint triangleCount;
     uint padding[2];
+
     vec4 boundMin;
     vec4 boundMax;
+
     vec4 color_smoothness;
     vec4 emissionColor_emissionStrength;
+
+    vec4 translation;
+    mat4 rotation;
+    mat4 inverseRotation;
 };
 layout (std430, binding = 2) buffer ModelBuffer {
     Model models[];
@@ -93,6 +99,7 @@ struct HitInfo {
 };
 
 
+vec3 debugColor = vec3(0.0);
 
 HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
     HitInfo hitInfo;
@@ -151,8 +158,6 @@ bool intersectRayBox(Ray ray, vec3 boxMin, vec3 boxMax) {
     return tNear <= tFar;
 }
 
-int debugNum = 0;
-
 uniform vec3 modelMin;
 uniform vec3 modelMax;
 HitInfo calculateRayIntersection(Ray ray) {
@@ -174,13 +179,18 @@ HitInfo calculateRayIntersection(Ray ray) {
         }
     }
     for (int modelIndex = 0; modelIndex < models.length(); modelIndex++) {
+        bool didHitModel = false;
         Model model = models[modelIndex];
-        if (!intersectRayBox(ray, model.boundMin.xyz, model.boundMax.xyz)) continue;
-        debugNum += 1;
+        Ray localRay;
+        localRay.origin = ray.origin - model.translation.xyz;
+        localRay.origin = mat3(model.rotation) * localRay.origin;
+        localRay.dir = mat3(model.rotation) * ray.dir;
+        if (!intersectRayBox(localRay, model.boundMin.xyz, model.boundMax.xyz)) continue;
         for (uint i = model.triangleIndex; i < model.triangleIndex+model.triangleCount; i++) {
             Triangle triangle = triangles[i];
-            HitInfo hitInfo = intersectRayTriangle(ray, triangle);
+            HitInfo hitInfo = intersectRayTriangle(localRay, triangle);
             if (hitInfo.didHit && hitInfo.t < closestHit.t) {
+                didHitModel = true;
                 closestHit = hitInfo;
                 Material material;
                 material.color = model.color_smoothness.rgb;
@@ -189,6 +199,13 @@ HitInfo calculateRayIntersection(Ray ray) {
                 material.smoothness = model.color_smoothness.a;
                 closestHit.material = material;
             }
+        }
+        if (didHitModel) {
+            closestHit.pos = mat3(model.inverseRotation) * closestHit.pos;
+            closestHit.pos += model.translation.xyz;
+    //        debugColor = normalize(closestHit.pos);
+            closestHit.normal = normalize(mat3(model.inverseRotation) * closestHit.normal);
+    //        debugColor = closestHit.normal;
         }
     }
     return closestHit;
@@ -236,8 +253,12 @@ void main() {
 
     vec3 curr = vec3(0);
     for (int i = 0; i < samplesPerPixel; i++)
-    curr += traceRay(ray, rngState);
+        curr += traceRay(ray, rngState);
     curr /= samplesPerPixel;
+
+    if (debugColor != vec3(0.0))
+        curr = debugColor;
+
     if (accumulate) {
         vec3 prev = texture(uPrevFrame, uv).rgb;
         float alpha = 1.0 / float(renderedFrames + 1u);

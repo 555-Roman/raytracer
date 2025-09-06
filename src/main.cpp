@@ -8,6 +8,7 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "glm/glm.hpp"
+#include "glm/ext/matrix_transform.hpp"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
@@ -30,8 +31,8 @@ const float cameraRotateSpeed = 60;
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 #else
-const unsigned int SCR_WIDTH = 1920 / 2;
-const unsigned int SCR_HEIGHT = 1080 / 2;
+const unsigned int SCR_WIDTH = 1920 / 4;
+const unsigned int SCR_HEIGHT = 1080 / 4;
 #endif
 
 GLuint sphereSSBO;
@@ -39,12 +40,7 @@ GLuint triangleSSBO;
 std::vector<Triangle> triangles;
 GLuint modelSSBO;
 
-// vec3 cameraPosition = vec3(2.0, 3.0, -5.0);
-// vec3 cameraForward = vec3(-0.3244428422615251, -0.48666426339228763, 0.8111071056538127);
-// vec3 cameraUp = vec3(-0.18074256993863339, 0.8735890880367281, 0.45185642484658345);
-// vec3 cameraRight = vec3(0.9284766908852593, 0.0, 0.3713906763541037);
-
-vec3 cameraPosition = vec3(0.81463, 1.59022, 2.72685);
+vec3 cameraPosition = vec3(-3.62104, 1.74877, 0.270749);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -157,25 +153,6 @@ int main() {
     for (Triangle triangle : trianglesFromModel) {
         triangles.push_back(triangle);
     }
-    std::cout << triangles.size() << std::endl;
-    std::cout << sizeof(Triangle) << std::endl;
-    std::cout << triangles.size() * sizeof(Triangle) << std::endl;
-    vec3 monkeMin = vec3(triangles[0].posA);
-    vec3 monkeMax = vec3(triangles[0].posA);
-    for (Triangle triangle : triangles) {
-        monkeMin = min(monkeMin, vec3(triangle.posA));
-        monkeMin = min(monkeMin, vec3(triangle.posB));
-        monkeMin = min(monkeMin, vec3(triangle.posC));
-
-        monkeMax = max(monkeMax, vec3(triangle.posB));
-        monkeMax = max(monkeMax, vec3(triangle.posA));
-        monkeMax = max(monkeMax, vec3(triangle.posC));
-    }
-    std::cout << monkeMin.x << ", " << monkeMin.y << ", " << monkeMin.z << std::endl;
-    std::cout << monkeMax.x << ", " << monkeMax.y << ", " << monkeMax.z << std::endl;
-    std::cout << triangles[0].posA.x << ", " << triangles[0].posA.y << ", " << triangles[0].posA.z << ", " << triangles[0].posA.w << std::endl;
-    std::cout << triangles[0].posB.x << ", " << triangles[0].posB.y << ", " << triangles[0].posB.z << ", " << triangles[0].posB.w << std::endl;
-    std::cout << triangles[0].posC.x << ", " << triangles[0].posC.y << ", " << triangles[0].posC.z << ", " << triangles[0].posC.w << std::endl;
     sendTriangles();
 
     glGenBuffers(1, &modelSSBO);
@@ -222,9 +199,6 @@ int main() {
         shader.setInt("samplesPerPixel", 1);
         shader.setUint("renderedFrames", frameCount);
         shader.setBool("accumulate", isStill);
-
-        shader.setFloat("modelMin", monkeMin.x, monkeMin.y, monkeMin.z);
-        shader.setFloat("modelMax", monkeMax.x, monkeMax.y, monkeMax.z);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
@@ -293,24 +267,27 @@ void sendTriangles() {
     glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), &(triangles[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, triangleSSBO);
 }
+mat4 defaultRotation = mat4(1);
 void sendModels() {
     Model model0 = {
-        0, 112, {0, 0},
+        0, 968, {0, 0},
         vec4(-1.36719f, -0.984375f, -0.851562f, 0.0f),
         vec4(1.36719, 0.984375, 0.851562, 0.0),
-        vec4(0.0), vec4(1.0)
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0),
+        vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model1 = {
-        112, 856, {0, 0},
+        0, 968, {0, 0},
         vec4(-1.36719f, -0.984375f, -0.851562f, 0.0f),
         vec4(1.36719, 0.984375, 0.851562, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0)
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0),
+        vec4(0.0, 0.5, 2.0, 0.0),
+        rotate(defaultRotation, 3.1415926f / 2.0f, vec3(0, 1, 0)),
+        inverse(rotate(defaultRotation, 3.1415926f / 2.0f, vec3(0, 1, 0)))
     };
     std::vector<Model> models;
     models.push_back(model0);
     models.push_back(model1);
-    // Model myModel = {0, 64};
-    std::cout << sizeof(Model) << std::endl;
     glBufferData(GL_SHADER_STORAGE_BUFFER, models.size() * sizeof(Model), &(models[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, modelSSBO);
 }
@@ -327,7 +304,7 @@ vec3 rotateY(vec3 vector, float angle) {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 unsigned char buffer[3 * SCR_WIDTH * SCR_HEIGHT];
-float cameraPitch = 34.9499, cameraYaw = 128.802;
+float cameraPitch = 28.2332, cameraYaw = 317.851;
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)

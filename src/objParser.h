@@ -40,10 +40,16 @@ struct Model {
     uint triangleIndex;
     uint triangleCount;
     uint padding[2];
+
     vec4 boundMin;
     vec4 boundMax;
+
     vec4 color_smoothness;
     vec4 emissionColor_emissionStrength;
+
+    vec4 translation;
+    mat4 rotation;
+    mat4 inverseRotation;
 };
 
 
