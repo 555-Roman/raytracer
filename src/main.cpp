@@ -175,16 +175,16 @@ int main() {
     while (!glfwWindowShouldClose(window))
     {
         if (START_RENDER) {
-            if (frameCount == 1) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1_samples.png"); }
-            if (frameCount == 2) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "2_samples.png"); }
-            if (frameCount == 5) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "5_samples.png"); }
-            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples.png"); }
-            if (frameCount == 20) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "20_samples.png"); }
-            if (frameCount == 50) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "50_samples.png"); }
-            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples.png"); }
-            if (frameCount == 200) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "200_samples.png"); }
-            if (frameCount == 500) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "500_samples.png"); }
-            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples.png"); }
+            if (frameCount == 1) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1_samples_gamma_corrected.png"); }
+            if (frameCount == 2) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "2_samples_gamma_corrected.png"); }
+            if (frameCount == 5) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "5_samples_gamma_corrected.png"); }
+            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples_gamma_corrected.png"); }
+            if (frameCount == 20) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "20_samples_gamma_corrected.png"); }
+            if (frameCount == 50) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "50_samples_gamma_corrected.png"); }
+            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples_gamma_corrected.png"); }
+            if (frameCount == 200) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "200_samples_gamma_corrected.png"); }
+            if (frameCount == 500) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "500_samples_gamma_corrected.png"); }
+            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples_gamma_corrected.png"); }
         }
 
         std::chrono::time_point<std::chrono::system_clock> startFrame = std::chrono::high_resolution_clock::now();
@@ -327,7 +327,7 @@ void sendModels() {
         62, 12, {0, 0},
         vec4(-0.5, 1.95, -0.483333, 0.0f),
         vec4(0.5, 2.05, 0.516667, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 1.0, 1.0, 10.0),
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 1.0, 1.0, 5.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model4 = {
