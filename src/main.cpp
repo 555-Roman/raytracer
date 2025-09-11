@@ -28,6 +28,8 @@ const float cameraMoveSpeed = 2;
 const float cameraRotateSpeed = 60;
 float cameraPitch = 0, cameraYaw = 180;
 
+bool START_RENDER = false;
+
 // #define FULLSCREEN
 #ifdef FULLSCREEN
 const unsigned int SCR_WIDTH = 1920;
@@ -172,16 +174,18 @@ int main() {
     // -----------
     while (!glfwWindowShouldClose(window))
     {
-        if (frameCount == 1) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1_samples.png"); }
-        if (frameCount == 2) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "2_samples.png"); }
-        if (frameCount == 5) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "5_samples.png"); }
-        if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples.png"); }
-        if (frameCount == 20) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "20_samples.png"); }
-        if (frameCount == 50) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "50_samples.png"); }
-        if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples.png"); }
-        if (frameCount == 200) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "200_samples.png"); }
-        if (frameCount == 500) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "500_samples.png"); }
-        if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples.png"); }
+        if (START_RENDER) {
+            if (frameCount == 1) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1_samples.png"); }
+            if (frameCount == 2) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "2_samples.png"); }
+            if (frameCount == 5) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "5_samples.png"); }
+            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples.png"); }
+            if (frameCount == 20) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "20_samples.png"); }
+            if (frameCount == 50) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "50_samples.png"); }
+            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples.png"); }
+            if (frameCount == 200) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "200_samples.png"); }
+            if (frameCount == 500) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "500_samples.png"); }
+            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples.png"); }
+        }
 
         std::chrono::time_point<std::chrono::system_clock> startFrame = std::chrono::high_resolution_clock::now();
         // input
@@ -360,6 +364,7 @@ void saveScreenshot(int x, int y, int width, int height, char name[]) {
     glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, &buffer);
     stbi_write_png(name, SCR_WIDTH, SCR_HEIGHT, 3, &buffer, 3 * SCR_WIDTH);
 }
+auto lastClicked = std::chrono::high_resolution_clock::now();
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -372,6 +377,15 @@ void processInput(GLFWwindow *window)
         std::cout << "Camera Data:" << std::endl;
         std::cout << cameraPosition.x << ", " << cameraPosition.y << ", " << cameraPosition.z << std::endl;
         std::cout << cameraPitch << ", " << cameraYaw << std::endl;
+    }
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        if (std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - lastClicked).count() < 1) return;
+        lastClicked = std::chrono::high_resolution_clock::now();
+        std::cout << "toggled rendering" << std::endl;
+        START_RENDER = !START_RENDER;
+        if (START_RENDER) {
+            frameCount = 0;
+        }
     }
 
     vec3 toAdd = vec3(0, 0, 0);
