@@ -228,7 +228,7 @@ vec3 traceRay(Ray ray, inout uint rngState) {
             ray.origin = hitInfo.pos;
             vec3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
             vec3 specularDir = reflect(ray.dir, hitInfo.normal);
-            ray.dir = mix(diffuseDir, specularDir, material.smoothness);
+            ray.dir = mix(diffuseDir, specularDir, RandomValue(rngState) < material.smoothness);
 
             vec3 emittedLight = material.emissionColor * material.emissionStrength;
             inLight += emittedLight * rayColor;

@@ -18,6 +18,7 @@ void sendSpheres();
 void sendTriangles();
 void sendModels();
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void saveScreenshot(int x, int y, int width, int height, char name[]);
 void processInput(GLFWwindow *window);
 float deltaTime = 0.0f;
 bool isStill = true;
@@ -25,8 +26,9 @@ unsigned int frameCount = 0;
 
 const float cameraMoveSpeed = 2;
 const float cameraRotateSpeed = 60;
+float cameraPitch = 0, cameraYaw = 180;
 
-#define FULLSCREEN
+// #define FULLSCREEN
 #ifdef FULLSCREEN
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
@@ -40,7 +42,7 @@ GLuint triangleSSBO;
 std::vector<Triangle> triangles;
 GLuint modelSSBO;
 
-vec3 cameraPosition = vec3(-3.62104, 1.74877, 0.270749);
+vec3 cameraPosition = vec3(0, 0, 4);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -149,7 +151,11 @@ int main() {
 
     glGenBuffers(1, &triangleSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, triangleSSBO);
-    std::vector<Triangle> trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/model.obj");
+    std::vector<Triangle> trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/box.obj");
+    for (Triangle triangle : trianglesFromModel) {
+        triangles.push_back(triangle);
+    }
+    trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/model.obj");
     for (Triangle triangle : trianglesFromModel) {
         triangles.push_back(triangle);
     }
@@ -166,6 +172,17 @@ int main() {
     // -----------
     while (!glfwWindowShouldClose(window))
     {
+        if (frameCount == 1) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1_samples.png"); }
+        if (frameCount == 2) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "2_samples.png"); }
+        if (frameCount == 5) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "5_samples.png"); }
+        if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples.png"); }
+        if (frameCount == 20) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "20_samples.png"); }
+        if (frameCount == 50) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "50_samples.png"); }
+        if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples.png"); }
+        if (frameCount == 200) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "200_samples.png"); }
+        if (frameCount == 500) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "500_samples.png"); }
+        if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples.png"); }
+
         std::chrono::time_point<std::chrono::system_clock> startFrame = std::chrono::high_resolution_clock::now();
         // input
         // -----
@@ -195,7 +212,7 @@ int main() {
         shader.setFloat("cameraUp", cameraUp.x, cameraUp.y, cameraUp.z);
         shader.setFloat("cameraRight", cameraRight.x, cameraRight.y, cameraRight.z);
 
-        shader.setInt("maxBounces", 4);
+        shader.setInt("maxBounces", 10);
         shader.setInt("samplesPerPixel", 1);
         shader.setUint("renderedFrames", frameCount);
         shader.setBool("accumulate", isStill);
@@ -248,8 +265,8 @@ void sendSpheres() {
     std::vector<Sphere> spheres;
     Sphere mySphere0 = Sphere{vec4(0.0, -1001.0, 0.0, 1000.0), vec4(0.8, 0.0, 0.8, 0.0), vec4(0.0)};
     Sphere mySphere1 = Sphere{vec4(-100.0, 50.0, 200.0, 100.0), vec4(0.0), vec4(1.0, 1.0, 1.0, 3.5)};
-    spheres.push_back(mySphere0);
-    spheres.push_back(mySphere1);
+    // spheres.push_back(mySphere0);
+    // spheres.push_back(mySphere1);
 
     glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), &(spheres[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sphereSSBO);
@@ -269,25 +286,59 @@ void sendTriangles() {
 }
 mat4 defaultRotation = mat4(1);
 void sendModels() {
+    vec3 Mmin = vec3(triangles[74].posA);
+    vec3 Mmax = vec3(triangles[74].posA);
+    for (int i = 74; i < 74+968; i++) {
+        Mmin = min(Mmin, vec3(triangles[i].posA));
+        Mmin = min(Mmin, vec3(triangles[i].posB));
+        Mmin = min(Mmin, vec3(triangles[i].posC));
+        Mmax = max(Mmax, vec3(triangles[i].posA));
+        Mmax = max(Mmax, vec3(triangles[i].posB));
+        Mmax = max(Mmax, vec3(triangles[i].posC));
+    }
+    std::cout << "Mmin: " << Mmin.x << ", " << Mmin.y << ", " << Mmin.z << std::endl;
+    std::cout << "Mmax: " << Mmax.x << ", " << Mmax.y << ", " << Mmax.z << std::endl;
     Model model0 = {
-        0, 968, {0, 0},
-        vec4(-1.36719f, -0.984375f, -0.851562f, 0.0f),
-        vec4(1.36719, 0.984375, 0.851562, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0),
+        0, 12, {0, 0},
+        vec4(-2.4, -2, -1.98333, 0.0f),
+        vec4(-2, 2, 2.01667, 0.0),
+        vec4(0.0, 1.0, 0.0, 0.0), vec4(0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model1 = {
-        0, 968, {0, 0},
-        vec4(-1.36719f, -0.984375f, -0.851562f, 0.0f),
-        vec4(1.36719, 0.984375, 0.851562, 0.0),
+        12, 12, {0, 0},
+        vec4(2, -2, -1.98333, 0.0f),
+        vec4(2.4, 2, 2.01667, 0.0),
+        vec4(1.0, 0.0, 0.0, 0.0), vec4(0.0),
+        vec4( 0.0), defaultRotation, inverse(defaultRotation)
+    };
+    Model model2 = {
+        24, 38, {0, 0},
+        vec4(-2, -2.4, -2.38333, 0.0f),
+        vec4(2, 2.4, 2.01667, 0.0),
         vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0),
-        vec4(0.0, 0.5, 2.0, 0.0),
-        rotate(defaultRotation, 3.1415926f / 2.0f, vec3(0, 1, 0)),
-        inverse(rotate(defaultRotation, 3.1415926f / 2.0f, vec3(0, 1, 0)))
+        vec4(0.0), defaultRotation, inverse(defaultRotation)
+    };
+    Model model3 = {
+        62, 12, {0, 0},
+        vec4(-0.5, 1.95, -0.483333, 0.0f),
+        vec4(0.5, 2.05, 0.516667, 0.0),
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 1.0, 1.0, 10.0),
+        vec4(0.0), defaultRotation, inverse(defaultRotation)
+    };
+    Model model4 = {
+        74, 968, {0, 0},
+        vec4(-1.36719, -0.984375, -0.851562, 0.0),
+        vec4(1.36719, 0.984375, 0.851562, 0.0),
+        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0),
+        vec4(0.0, -0.5, 0.0, 0.0), defaultRotation, inverse(defaultRotation)
     };
     std::vector<Model> models;
     models.push_back(model0);
     models.push_back(model1);
+    models.push_back(model2);
+    models.push_back(model3);
+    models.push_back(model4);
     glBufferData(GL_SHADER_STORAGE_BUFFER, models.size() * sizeof(Model), &(models[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, modelSSBO);
 }
@@ -304,15 +355,18 @@ vec3 rotateY(vec3 vector, float angle) {
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 // ---------------------------------------------------------------------------------------------------------
 unsigned char buffer[3 * SCR_WIDTH * SCR_HEIGHT];
-float cameraPitch = 28.2332, cameraYaw = 317.851;
+void saveScreenshot(int x, int y, int width, int height, char name[]) {
+    std::cout << "saving screenshot with name \"" << name << "\"..." << std::endl;
+    glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, &buffer);
+    stbi_write_png(name, SCR_WIDTH, SCR_HEIGHT, 3, &buffer, 3 * SCR_WIDTH);
+}
 void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-        glReadPixels(0, 0, SCR_WIDTH, SCR_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, &buffer);
-        stbi_write_png("screenshot.png", SCR_WIDTH, SCR_HEIGHT, 3, &buffer, 3 * SCR_WIDTH);
+        saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, "screenshot.png");
     }
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
         std::cout << "Camera Data:" << std::endl;
