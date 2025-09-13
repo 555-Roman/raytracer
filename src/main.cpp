@@ -26,7 +26,7 @@ unsigned int frameCount = 0;
 
 const float cameraMoveSpeed = 2;
 const float cameraRotateSpeed = 60;
-float cameraPitch = 0, cameraYaw = 180;
+float cameraPitch = 64.1298, cameraYaw = 180;
 
 bool START_RENDER = false;
 
@@ -44,7 +44,7 @@ GLuint triangleSSBO;
 std::vector<Triangle> triangles;
 GLuint modelSSBO;
 
-vec3 cameraPosition = vec3(0, 0, 4);
+vec3 cameraPosition = vec3(2.90955e-07, 1.971, 0.671867);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -267,10 +267,10 @@ int main() {
 
 void sendSpheres() {
     std::vector<Sphere> spheres;
-    Sphere mySphere0 = Sphere{vec4(0.0, -1001.0, 0.0, 1000.0), vec4(0.8, 0.0, 0.8, 0.0), vec4(0.0)};
-    Sphere mySphere1 = Sphere{vec4(-100.0, 50.0, 200.0, 100.0), vec4(0.0), vec4(1.0, 1.0, 1.0, 3.5)};
-    // spheres.push_back(mySphere0);
-    // spheres.push_back(mySphere1);
+    Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0)};
+    Sphere mySphere1 = {vec4(-0.5, -1.0, -1.5, 0.25), vec4(1.0, 0.0, 1.0, 1.0), vec4(0.0), vec4(1.0, 1.0, 0.0, 0.0)};
+    spheres.push_back(mySphere0);
+    spheres.push_back(mySphere1);
 
     glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), &(spheres[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sphereSSBO);
@@ -306,35 +306,35 @@ void sendModels() {
         0, 12, {0, 0},
         vec4(-2.4, -2, -1.98333, 0.0f),
         vec4(-2, 2, 2.01667, 0.0),
-        vec4(0.0, 1.0, 0.0, 0.0), vec4(0.0),
+        vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model1 = {
         12, 12, {0, 0},
         vec4(2, -2, -1.98333, 0.0f),
         vec4(2.4, 2, 2.01667, 0.0),
-        vec4(1.0, 0.0, 0.0, 0.0), vec4(0.0),
+        vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0),
         vec4( 0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model2 = {
         24, 38, {0, 0},
         vec4(-2, -2.4, -2.38333, 0.0f),
         vec4(2, 2.4, 2.01667, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0),
+        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model3 = {
         62, 12, {0, 0},
         vec4(-0.5, 1.95, -0.483333, 0.0f),
         vec4(0.5, 2.05, 0.516667, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 1.0, 1.0, 5.0),
+        vec4(1.0, 1.0, 1.0, 1.0), vec4(1.0, 1.0, 1.0, 5.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model4 = {
         74, 968, {0, 0},
         vec4(-1.36719, -0.984375, -0.851562, 0.0),
         vec4(1.36719, 0.984375, 0.851562, 0.0),
-        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0),
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0),
         vec4(0.0, -0.5, 0.0, 0.0), defaultRotation, inverse(defaultRotation)
     };
     std::vector<Model> models;
@@ -342,7 +342,7 @@ void sendModels() {
     models.push_back(model1);
     models.push_back(model2);
     models.push_back(model3);
-    models.push_back(model4);
+    // models.push_back(model4);
     glBufferData(GL_SHADER_STORAGE_BUFFER, models.size() * sizeof(Model), &(models[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, modelSSBO);
 }

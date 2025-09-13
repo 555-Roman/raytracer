@@ -15,7 +15,7 @@ struct Material {
     vec3 color;
     vec3 emissionColor;
     float emissionStrength;
-    float smoothness;
+    float roughness;
 };
 Material defaultMaterial = {vec3(1.0), vec3(0.0), 0.0, 0.0};
 /*struct Sphere {
@@ -25,8 +25,9 @@ Material defaultMaterial = {vec3(1.0), vec3(0.0), 0.0, 0.0};
 };*/
 struct Sphere {
     vec4 pos_radius;
-    vec4 color_smoothness;
+    vec4 color_roughness;
     vec4 emissionColor_emissionStrength;
+    vec4 alpha_ior_tbd_tbd;
 };
 struct Triangle {
     vec4 posA;
@@ -44,7 +45,7 @@ struct Model {
     vec4 boundMin;
     vec4 boundMax;
 
-    vec4 color_smoothness;
+    vec4 color_roughness;
     vec4 emissionColor_emissionStrength;
 
     vec4 translation;
