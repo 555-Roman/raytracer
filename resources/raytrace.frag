@@ -277,11 +277,8 @@ void main() {
     if (debugColor != vec3(0.0))
         curr = debugColor;
 
-    if (accumulate) {
-        vec3 prev = texture(uPrevFrame, uv).rgb;
-        float alpha = 1.0 / float(renderedFrames + 1u);
-        vec3 blended = mix(prev, curr, alpha);
-        FragColor = vec4(blended, 1.0);
-    } else
-    FragColor = vec4(curr, 1.0);
+    vec3 prev = texture(uPrevFrame, uv).rgb;
+    float alpha = 1.0 / float(renderedFrames + 1u);
+    vec3 blended = mix(prev, curr, alpha);
+    FragColor = vec4(blended, 1.0);
 }

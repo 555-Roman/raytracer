@@ -21,7 +21,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void saveScreenshot(int x, int y, int width, int height, char name[]);
 void processInput(GLFWwindow *window);
 float deltaTime = 0.0f;
-bool isStill = true;
 unsigned int frameCount = 0;
 
 const float cameraMoveSpeed = 2;
@@ -29,6 +28,7 @@ const float cameraRotateSpeed = 60;
 float cameraPitch = 64.1298, cameraYaw = 180;
 
 bool START_RENDER = false;
+bool ZERO_TOGGLE = true;
 
 // #define FULLSCREEN
 #ifdef FULLSCREEN
@@ -218,8 +218,7 @@ int main() {
 
         shader.setInt("maxBounces", 10);
         shader.setInt("samplesPerPixel", 1);
-        shader.setUint("renderedFrames", frameCount);
-        shader.setBool("accumulate", isStill);
+        shader.setUint("renderedFrames", frameCount * ZERO_TOGGLE);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, accumTextures[readIdx]);
@@ -383,9 +382,14 @@ void processInput(GLFWwindow *window)
         lastClicked = std::chrono::high_resolution_clock::now();
         std::cout << "toggled rendering" << std::endl;
         START_RENDER = !START_RENDER;
-        if (START_RENDER) {
-            frameCount = 0;
-        }
+        frameCount = 0;
+    }
+    if (glfwGetKey(window, GLFW_KEY_0) == GLFW_PRESS) {
+        if (std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - lastClicked).count() < 1) return;
+        lastClicked = std::chrono::high_resolution_clock::now();
+        std::cout << "toggled zero" << std::endl;
+        ZERO_TOGGLE = !ZERO_TOGGLE;
+        frameCount = 0;
     }
 
     vec3 toAdd = vec3(0, 0, 0);
@@ -420,8 +424,7 @@ void processInput(GLFWwindow *window)
     cameraForward = rotateY(cameraForward, cameraYaw);
     cameraUp = rotateY(cameraUp, cameraYaw);
     cameraRight = rotateY(cameraRight, cameraYaw);
-    isStill = toAdd == vec3(0) && pitch == 0 && yaw == 0;
-    frameCount = isStill ? frameCount : 0;
+    frameCount = toAdd == vec3(0) && pitch == 0 && yaw == 0 ? frameCount : 0;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
