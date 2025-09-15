@@ -14,7 +14,7 @@ float RandomValue(inout uint rngState) {
     rngState = rngState * 747796405u + 2891336453u;
     uint result = ((rngState >> ((rngState >> 28u) + 4u)) ^ rngState) * 277803737u;
     result = (result >> 22u) ^ result;
-    return result / 4294967295.0;
+    return result / 4294967296.0;
 }
 float RandomValueNormalDistribution(inout uint rngState) {
     float theta = 2 * 3.1415926 * RandomValue(rngState);
@@ -32,7 +32,7 @@ vec3 RandomHemisphereDirection(vec3 normal, inout uint rngState) {
     return dir * sign(dot(normal, dir));
 }
 vec2 RandomDirectionInCircle(inout uint rngState) {
-    float theta = RandomValue(rngState) * 360;
+    float theta = RandomValue(rngState) * 3.1415926 * 2;
     return vec2(cos(theta), sin(theta));
 }
 
@@ -49,6 +49,7 @@ struct Material {
     float roughness;
     float alpha;
     float ior;
+    float metalness;
 };
 
 
@@ -56,7 +57,7 @@ struct Sphere {
     vec4 pos_radius;
     vec4 color_smoothness;
     vec4 emissionColor_emissionStrength;
-    vec4 alpha_ior_tbd_tbd;
+    vec4 alpha_ior_metalness_tbd;
 };
 layout (std430, binding = 0) buffer SphereBuffer {
     Sphere spheres[];
@@ -114,16 +115,10 @@ HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
     float c = dot(offsetRayOrigin, offsetRayOrigin) - sphere.pos_radius.w * sphere.pos_radius.w;
     float discriminant = b * b - 4 * a * c;
 
-    if (discriminant >= 0) {
+    if (discriminant > 0) {
         float t = (-b - sqrt(discriminant)) / (2 * a);
-        /*
-        float q = (b > 0) ? -0.5*(b + sqrt(discriminant)) : -0.5*(b - sqrt(discriminant));
-        float t = q / a;
-        float t1 = c / q;
-        if (t > t1) t = t1;
-        */
 
-        if (t >= 0) {
+        if (t > 0) {
             hitInfo.didHit = true;
             hitInfo.t = t;
             hitInfo.pos = ray.origin + ray.dir * t;
@@ -184,8 +179,9 @@ HitInfo calculateRayIntersection(Ray ray) {
             material.emissionColor = sphere.emissionColor_emissionStrength.rgb;
             material.emissionStrength = sphere.emissionColor_emissionStrength.a;
             material.roughness = sphere.color_smoothness.a;
-            material.alpha = sphere.alpha_ior_tbd_tbd.r;
-            material.ior = sphere.alpha_ior_tbd_tbd.g;
+            material.alpha = sphere.alpha_ior_metalness_tbd.r;
+            material.ior = sphere.alpha_ior_metalness_tbd.g;
+            material.metalness = sphere.alpha_ior_metalness_tbd.b;
             closestHit.material = material;
         }
     }
@@ -210,6 +206,7 @@ HitInfo calculateRayIntersection(Ray ray) {
                 material.roughness = model.color_smoothness.a;
                 material.alpha = 1.0;
                 material.ior = 1.0;
+                material.metalness = 0.0;
                 closestHit.material = material;
             }
         }
@@ -225,26 +222,45 @@ HitInfo calculateRayIntersection(Ray ray) {
 }
 
 vec3 GetEnvironmentLight(Ray ray) {
+    return vec3(0.0);
     float a = 0.5*(ray.dir.y + 1.0);
     return mix(vec3(1.0, 1.0, 1.0), vec3(0.5, 0.7, 1.0), a);
 }
 
-uniform int maxBounces;
+uniform int maxBounces_reflection;
+uniform int maxBounces_transmission;
 vec3 traceRay(Ray ray, inout uint rngState) {
     vec3 inLight = vec3(0.0);
     vec3 rayColor = vec3(1.0);
-    for (int i = 0; i <= maxBounces; i++) {
+    uint reflectionBounces = 0;
+    uint transmissionBounces = 0;
+    while (reflectionBounces < maxBounces_reflection && transmissionBounces < maxBounces_transmission) {
         HitInfo hitInfo = calculateRayIntersection(ray);
         Material material = hitInfo.material;
 
         if (hitInfo.didHit) {
             vec3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
             vec3 specularDir = reflect(ray.dir, hitInfo.normal);
-            vec3 reflectionDir = mix(specularDir, diffuseDir, material.roughness);
+            bool isDiffuseBounce = RandomValue(rngState) < material.metalness;
+            vec3 reflectionDir = mix(specularDir, diffuseDir, isDiffuseBounce ? material.roughness : 1.0);
             vec3 transmissionDir = refract(ray.dir, hitInfo.normal, 1.0);
 
-            ray.dir = mix(transmissionDir, reflectionDir, material.alpha);
-            ray.origin = hitInfo.pos + 1e-5 * rayDir;
+            /*if (material.alpha == 0.0) {
+                debugColor = vec3(0.0, 1.0, 0.0);
+                if (transmissionDir == ray.dir) debugColor = vec3(1.0, 0.0, 1.0);
+            } else {
+                debugColor = vec3(1.0, 1.0, 1.0);
+            }
+            break;*/
+            if (material.alpha == 0.0) {
+                ray.dir = transmissionDir;
+                transmissionBounces++;
+            } else {
+                ray.dir = reflectionDir;
+                reflectionBounces++;
+            }
+
+            ray.origin = hitInfo.pos + 1e-5 * ray.dir;
 
 //            if (transmissionDir == ray.dir && material.alpha == 0.0) debugColor = vec3(0.0, 1.0, 0.0);
 
@@ -256,6 +272,10 @@ vec3 traceRay(Ray ray, inout uint rngState) {
             break;
         }
     }
+//    if (transmissionBounces >= maxBounces_transmission) {
+//        if (reflectionBounces == 2) debugColor = vec3(0.0, 1.0, 1.0);
+//        else debugColor = vec3(0.0, 1.0, 0.0);
+//    }
     return inLight;
 }
 

@@ -23,9 +23,9 @@ void processInput(GLFWwindow *window);
 float deltaTime = 0.0f;
 unsigned int frameCount = 0;
 
-const float cameraMoveSpeed = 2;
+const float cameraMoveSpeed = 1;
 const float cameraRotateSpeed = 60;
-float cameraPitch = 64.1298, cameraYaw = 180;
+float cameraPitch = 0, cameraYaw = 180;
 
 bool START_RENDER = false;
 bool ZERO_TOGGLE = true;
@@ -44,7 +44,7 @@ GLuint triangleSSBO;
 std::vector<Triangle> triangles;
 GLuint modelSSBO;
 
-vec3 cameraPosition = vec3(2.90955e-07, 1.971, 0.671867);
+vec3 cameraPosition = vec3(0, 0, 4);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -172,20 +172,14 @@ int main() {
 
     // render loop
     // -----------
-    while (!glfwWindowShouldClose(window))
-    {
+    while (!glfwWindowShouldClose(window)) {
         if (START_RENDER) {
-            if (frameCount == 1) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1_samples_gamma_corrected.png"); }
-            if (frameCount == 2) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "2_samples_gamma_corrected.png"); }
-            if (frameCount == 5) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "5_samples_gamma_corrected.png"); }
-            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples_gamma_corrected.png"); }
-            if (frameCount == 20) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "20_samples_gamma_corrected.png"); }
-            if (frameCount == 50) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "50_samples_gamma_corrected.png"); }
-            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples_gamma_corrected.png"); }
-            if (frameCount == 200) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "200_samples_gamma_corrected.png"); }
-            if (frameCount == 500) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "500_samples_gamma_corrected.png"); }
-            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples_gamma_corrected.png"); }
+            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples_white_strong.png"); }
+            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples_white_strong.png"); }
+            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples_white_strong.png"); }
+            if (frameCount == 10000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10000_samples_white_strong.png"); }
         }
+        // if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, "1000_samples_screenshot_100_bounces.png"); }
 
         std::chrono::time_point<std::chrono::system_clock> startFrame = std::chrono::high_resolution_clock::now();
         // input
@@ -216,7 +210,8 @@ int main() {
         shader.setFloat("cameraUp", cameraUp.x, cameraUp.y, cameraUp.z);
         shader.setFloat("cameraRight", cameraRight.x, cameraRight.y, cameraRight.z);
 
-        shader.setInt("maxBounces", 10);
+        shader.setInt("maxBounces_reflection", 10);
+        shader.setInt("maxBounces_transmission", 10);
         shader.setInt("samplesPerPixel", 1);
         shader.setUint("renderedFrames", frameCount * ZERO_TOGGLE);
 
@@ -266,7 +261,7 @@ int main() {
 
 void sendSpheres() {
     std::vector<Sphere> spheres;
-    Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0)};
+    Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0)};
     Sphere mySphere1 = {vec4(-0.5, -1.0, -1.5, 0.25), vec4(1.0, 0.0, 1.0, 1.0), vec4(0.0), vec4(1.0, 1.0, 0.0, 0.0)};
     spheres.push_back(mySphere0);
     spheres.push_back(mySphere1);
@@ -289,9 +284,9 @@ void sendTriangles() {
 }
 mat4 defaultRotation = mat4(1);
 void sendModels() {
-    vec3 Mmin = vec3(triangles[74].posA);
-    vec3 Mmax = vec3(triangles[74].posA);
-    for (int i = 74; i < 74+968; i++) {
+    vec3 Mmin = vec3(triangles[60].posA);
+    vec3 Mmax = vec3(triangles[60].posA);
+    for (int i = 60; i < 62; i++) {
         Mmin = min(Mmin, vec3(triangles[i].posA));
         Mmin = min(Mmin, vec3(triangles[i].posB));
         Mmin = min(Mmin, vec3(triangles[i].posC));
@@ -316,11 +311,25 @@ void sendModels() {
         vec4( 0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model2 = {
-        24, 38, {0, 0},
+        24, 36, {0, 0},
         vec4(-2, -2.4, -2.38333, 0.0f),
         vec4(2, 2.4, 2.01667, 0.0),
         vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
+    };
+    Model wallQuad = {
+        60, 2, {0, 0},
+        vec4(-2, -2, 2.01667, 0.0f),
+        vec4(2, 2, 2.01667, 0.0),
+        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0),
+        vec4(0.0), defaultRotation, inverse(defaultRotation)
+    };
+    Model lightQuad = {
+        60, 2, {0, 0},
+        vec4(-2, -2, 2.01667, 0.0f),
+        vec4(2, 2, 2.01667, 0.0),
+        vec4(0.0), vec4(1.0),
+        vec4(0.0, 0.0, -5.0, 0.0), rotate(defaultRotation, 3.1415926f, vec3(0.0f, 1.0f, 0.0f)), inverse(rotate(defaultRotation, 180.0f, vec3(0.0f, 1.0f, 0.0f)))
     };
     Model model3 = {
         62, 12, {0, 0},
@@ -340,6 +349,8 @@ void sendModels() {
     models.push_back(model0);
     models.push_back(model1);
     models.push_back(model2);
+    models.push_back(wallQuad);
+    // models.push_back(lightQuad);
     models.push_back(model3);
     // models.push_back(model4);
     glBufferData(GL_SHADER_STORAGE_BUFFER, models.size() * sizeof(Model), &(models[0]), GL_DYNAMIC_COPY);
