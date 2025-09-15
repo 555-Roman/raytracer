@@ -261,7 +261,7 @@ int main() {
 
 void sendSpheres() {
     std::vector<Sphere> spheres;
-    Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0)};
+    Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(0.0, 1.5, 0.0, 0.0)};
     Sphere mySphere1 = {vec4(-0.5, -1.0, -1.5, 0.25), vec4(1.0, 0.0, 1.0, 1.0), vec4(0.0), vec4(1.0, 1.0, 0.0, 0.0)};
     spheres.push_back(mySphere0);
     spheres.push_back(mySphere1);

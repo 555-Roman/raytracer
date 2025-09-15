@@ -100,12 +100,13 @@ struct HitInfo {
     vec3 pos;
     vec3 normal;
     Material material;
+    bool isBackFace;
 };
 
 
 vec3 debugColor = vec3(0.0);
 
-HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
+HitInfo intersectRaySphere(Ray ray, Sphere sphere, bool detectBackFace) {
     HitInfo hitInfo;
     hitInfo.didHit = false;
 
@@ -117,12 +118,17 @@ HitInfo intersectRaySphere(Ray ray, Sphere sphere) {
 
     if (discriminant > 0) {
         float t = (-b - sqrt(discriminant)) / (2 * a);
+        if (detectBackFace) {
+            float t1 = (-b + sqrt(discriminant)) / (2 * a);
+            float t = min(max(t, 0), max(t1, 0));
+        }
 
         if (t > 0) {
             hitInfo.didHit = true;
             hitInfo.t = t;
             hitInfo.pos = ray.origin + ray.dir * t;
             hitInfo.normal = normalize(hitInfo.pos - sphere.pos_radius.xyz);
+            if (detectBackFace) hitInfo.isBackFace = dot(hitInfo.normal, ray.dir) > 0;
         }
     }
     return hitInfo;
@@ -164,14 +170,14 @@ bool intersectRayBox(Ray ray, vec3 boxMin, vec3 boxMax) {
 
 uniform vec3 modelMin;
 uniform vec3 modelMax;
-HitInfo calculateRayIntersection(Ray ray) {
+HitInfo calculateRayIntersection(Ray ray, bool detectBackFace) {
     HitInfo closestHit;
     closestHit.didHit = false;
     closestHit.t = 1.0 / 0.0;
 
     for (int i = 0; i < spheres.length(); i++) {
         Sphere sphere = spheres[i];
-        HitInfo hitInfo = intersectRaySphere(ray, sphere);
+        HitInfo hitInfo = intersectRaySphere(ray, sphere, detectBackFace);
         if (hitInfo.didHit && hitInfo.t < closestHit.t) {
             closestHit = hitInfo;
             Material material;
@@ -234,8 +240,9 @@ vec3 traceRay(Ray ray, inout uint rngState) {
     vec3 rayColor = vec3(1.0);
     uint reflectionBounces = 0;
     uint transmissionBounces = 0;
+    bool isInsideMedium = false;
     while (reflectionBounces < maxBounces_reflection && transmissionBounces < maxBounces_transmission) {
-        HitInfo hitInfo = calculateRayIntersection(ray);
+        HitInfo hitInfo = calculateRayIntersection(ray, isInsideMedium);
         Material material = hitInfo.material;
 
         if (hitInfo.didHit) {
@@ -243,7 +250,7 @@ vec3 traceRay(Ray ray, inout uint rngState) {
             vec3 specularDir = reflect(ray.dir, hitInfo.normal);
             bool isDiffuseBounce = RandomValue(rngState) < material.metalness;
             vec3 reflectionDir = mix(specularDir, diffuseDir, isDiffuseBounce ? material.roughness : 1.0);
-            vec3 transmissionDir = refract(ray.dir, hitInfo.normal, 1.0);
+            vec3 transmissionDir = refract(ray.dir, hitInfo.normal, isInsideMedium ? material.ior : 1.0/material.ior);
 
             /*if (material.alpha == 0.0) {
                 debugColor = vec3(0.0, 1.0, 0.0);
@@ -255,6 +262,7 @@ vec3 traceRay(Ray ray, inout uint rngState) {
             if (material.alpha == 0.0) {
                 ray.dir = transmissionDir;
                 transmissionBounces++;
+                isInsideMedium = !isInsideMedium;
             } else {
                 ray.dir = reflectionDir;
                 reflectionBounces++;
