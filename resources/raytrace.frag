@@ -227,6 +227,29 @@ HitInfo calculateRayIntersection(Ray ray, bool detectBackFace) {
     return closestHit;
 }
 
+float fresnelReflection(vec3 wi, vec3 normal, float iorI, float iorT) {
+    float refractRatio = iorI / iorT;
+    float cosAngleIn = -dot(wi, normal);
+    float sinSqrAngleOfRefraction = refractRatio * refractRatio * (1 - cosAngleIn * cosAngleIn);
+    if (sinSqrAngleOfRefraction >= 1) return 1; // Ray is fully reflected, no refraction occurs
+
+    float cosAngleOfRefraction = sqrt(1 - sinSqrAngleOfRefraction);
+    float denominatorPerpendicular = iorI * cosAngleIn + iorT * cosAngleOfRefraction;
+    float denominatorParallel = iorI * cosAngleIn + iorT * cosAngleOfRefraction;
+
+    if (min(denominatorPerpendicular, denominatorParallel) < 1E-8) return 1;
+
+    // Perpendicular polarization
+    float rPerpendicular = (iorI * cosAngleIn - iorT * cosAngleOfRefraction) / denominatorPerpendicular;
+    rPerpendicular *= rPerpendicular;
+    // Parallel polarization
+    float rParallel = (iorT * cosAngleIn - iorI * cosAngleOfRefraction) / denominatorParallel;
+    rParallel *= rParallel;
+
+    // Return the average of the perpendicular and parallel polarizations
+    return (rPerpendicular + rParallel) / 2;
+}
+
 vec3 GetEnvironmentLight(Ray ray) {
     return vec3(0.0);
     float a = 0.5*(ray.dir.y + 1.0);
@@ -247,10 +270,11 @@ vec3 traceRay(Ray ray, inout uint rngState) {
 
         if (hitInfo.didHit) {
             vec3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
-            vec3 specularDir = reflect(ray.dir, hitInfo.normal);
+            vec3 specularReflectionDir = reflect(ray.dir, hitInfo.normal);
             bool isDiffuseBounce = RandomValue(rngState) < material.metalness;
-            vec3 reflectionDir = mix(specularDir, diffuseDir, isDiffuseBounce ? material.roughness : 1.0);
-            vec3 transmissionDir = refract(ray.dir, hitInfo.normal, isInsideMedium ? material.ior : 1.0/material.ior);
+            vec3 reflectionDir = mix(specularReflectionDir, diffuseDir, isDiffuseBounce ? material.roughness : 1.0);
+            vec3 specularTransmissionDir = refract(ray.dir, hitInfo.normal, isInsideMedium ? material.ior : 1.0/material.ior);
+            vec3 transmissionDir = mix(specularTransmissionDir, -diffuseDir, material.roughness);
 
             /*if (material.alpha == 0.0) {
                 debugColor = vec3(0.0, 1.0, 0.0);
@@ -260,9 +284,14 @@ vec3 traceRay(Ray ray, inout uint rngState) {
             }
             break;*/
             if (material.alpha == 0.0) {
-                ray.dir = transmissionDir;
-                transmissionBounces++;
-                isInsideMedium = !isInsideMedium;
+                if (RandomValue(rngState) < fresnelReflection(ray.dir, hitInfo.normal, isInsideMedium ? material.ior : 1.0, isInsideMedium ? 1.0 : material.ior)) {
+                    ray.dir = reflectionDir;
+                    reflectionBounces++;
+                } else {
+                    ray.dir = transmissionDir;
+                    transmissionBounces++;
+                    isInsideMedium = !isInsideMedium;
+                }
             } else {
                 ray.dir = reflectionDir;
                 reflectionBounces++;
