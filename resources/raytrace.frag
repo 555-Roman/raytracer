@@ -47,7 +47,7 @@ struct Material {
     vec3 emissionColor;
     float emissionStrength;
     float roughness;
-    float alpha;
+    float transmission;
     float ior;
     float metalness;
 };
@@ -57,7 +57,7 @@ struct Sphere {
     vec4 pos_radius;
     vec4 color_smoothness;
     vec4 emissionColor_emissionStrength;
-    vec4 alpha_ior_metalness_tbd;
+    vec4 transmission_ior_metalness_tbd;
 };
 layout (std430, binding = 0) buffer SphereBuffer {
     Sphere spheres[];
@@ -185,9 +185,9 @@ HitInfo calculateRayIntersection(Ray ray, bool detectBackFace) {
             material.emissionColor = sphere.emissionColor_emissionStrength.rgb;
             material.emissionStrength = sphere.emissionColor_emissionStrength.a;
             material.roughness = sphere.color_smoothness.a;
-            material.alpha = sphere.alpha_ior_metalness_tbd.r;
-            material.ior = sphere.alpha_ior_metalness_tbd.g;
-            material.metalness = sphere.alpha_ior_metalness_tbd.b;
+            material.transmission = sphere.transmission_ior_metalness_tbd.r;
+            material.ior = sphere.transmission_ior_metalness_tbd.g;
+            material.metalness = sphere.transmission_ior_metalness_tbd.b;
             closestHit.material = material;
         }
     }
@@ -210,7 +210,7 @@ HitInfo calculateRayIntersection(Ray ray, bool detectBackFace) {
                 material.emissionColor = model.emissionColor_emissionStrength.rgb;
                 material.emissionStrength = model.emissionColor_emissionStrength.a;
                 material.roughness = model.color_smoothness.a;
-                material.alpha = 1.0;
+                material.transmission = 1.0;
                 material.ior = 1.0;
                 material.metalness = 0.0;
                 closestHit.material = material;
@@ -341,7 +341,7 @@ vec3 traceRay(Ray ray, inout uint rngState) {
                     rayColor *= vec3(1.0);
                     reflectionBounces++;
                 } else {
-                    if (RandomValue(rngState) < material.alpha) {
+                    if (RandomValue(rngState) < material.transmission) {
                         ray.dir = diffuseDir;
                         rayColor *= material.color;
                         reflectionBounces++;

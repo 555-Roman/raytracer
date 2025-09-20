@@ -14,7 +14,7 @@ struct Sphere {
     vec4 pos_radius;
     vec4 color_roughness;
     vec4 emissionColor_emissionStrength;
-    vec4 alpha_ior_metalness_tbd;
+    vec4 transmission_ior_metalness_tbd;
 };
 struct Triangle {
     vec4 posA;
