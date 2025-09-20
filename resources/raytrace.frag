@@ -210,7 +210,7 @@ HitInfo calculateRayIntersection(Ray ray, bool detectBackFace) {
                 material.emissionColor = model.emissionColor_emissionStrength.rgb;
                 material.emissionStrength = model.emissionColor_emissionStrength.a;
                 material.roughness = model.color_smoothness.a;
-                material.transmission = 1.0;
+                material.transmission = 0.0;
                 material.ior = 1.0;
                 material.metalness = 0.0;
                 closestHit.material = material;
@@ -342,14 +342,14 @@ vec3 traceRay(Ray ray, inout uint rngState) {
                     reflectionBounces++;
                 } else {
                     if (RandomValue(rngState) < material.transmission) {
-                        ray.dir = diffuseDir;
-                        rayColor *= material.color;
-                        reflectionBounces++;
-                    } else {
                         ray.dir = specularTransmissionDir;
                         transmissionBounces++;
                         isInsideMedium = !isInsideMedium;
                         rayColor *= material.color;
+                    } else {
+                        ray.dir = diffuseDir;
+                        rayColor *= material.color;
+                        reflectionBounces++;
                     }
                 }
             }
