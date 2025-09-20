@@ -25,7 +25,7 @@ unsigned int frameCount = 0;
 
 const float cameraMoveSpeed = 1;
 const float cameraRotateSpeed = 60;
-float cameraPitch = 0, cameraYaw = 180;
+float cameraPitch = 30.605, cameraYaw = 158.442;
 
 bool START_RENDER = false;
 bool ZERO_TOGGLE = true;
@@ -44,7 +44,7 @@ GLuint triangleSSBO;
 std::vector<Triangle> triangles;
 GLuint modelSSBO;
 
-vec3 cameraPosition = vec3(0, 0, 4);
+vec3 cameraPosition = vec3(0.744028, 0.912504, 1.45345);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -174,10 +174,10 @@ int main() {
     // -----------
     while (!glfwWindowShouldClose(window)) {
         if (START_RENDER) {
-            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples_white_strong.png"); }
-            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples_white_strong.png"); }
-            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples_white_strong.png"); }
-            if (frameCount == 10000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10000_samples_white_strong.png"); }
+            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples.png"); }
+            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples.png"); }
+            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples.png"); }
+            if (frameCount == 10000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10000_samples.png"); }
         }
         // if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, "1000_samples_screenshot_100_bounces.png"); }
 

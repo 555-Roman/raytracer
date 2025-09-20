@@ -250,6 +250,53 @@ float fresnelReflection(vec3 wi, vec3 normal, float iorI, float iorT) {
     return (rPerpendicular + rParallel) / 2;
 }
 
+void frisvad ( const vec3 n, out vec3 b1, out vec3 b2) {
+    if(n.z < -0.9999999f) // Handle the singularity
+    {
+        b1 = vec3( 0.0f, -1.0f, 0.0f);
+        b2 = vec3( -1.0f, 0.0f, 0.0f);
+        return ;
+    }
+    const float a = 1.0f /(1.0f + n.z);
+    const float b = -n.x*n.y*a;
+    b1 = vec3(1.0f - n.x*n.x*a, b, -n.x);
+    b2 = vec3(b, 1.0f - n.y*n.y*a, -n.y);
+}
+
+vec3 SampleVndf_Hemisphere(vec2 u, vec3 wi) {
+    // sample a spherical cap in (-wi.z, 1]
+    float phi = 2.0f * 3.1415926 * u.x;
+    float z = fma((1.0f - u.y), (1.0f + wi.z), -wi.z);
+    float sinTheta = sqrt(clamp(1.0f - z * z, 0.0f, 1.0f));
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    vec3 c = vec3(x, y, z);
+    // compute halfway direction;
+    vec3 h = c + wi;
+    // return without normalization (as this is done later)
+    return h;
+}
+
+vec3 SampleVndf_GGX(vec2 u, vec3 wi, vec2 alpha) {
+    // warp to the hemisphere configuration
+    vec3 wiStd = normalize(vec3(wi.xy * alpha, wi.z));
+    // sample the hemisphere (see implementation 2 or 3)
+    vec3 wmStd = SampleVndf_Hemisphere(u, wiStd);
+    // warp back to the ellipsoid configuration
+    vec3 wm = normalize(vec3(wmStd.xy * alpha, wmStd.z));
+    // return final normal
+    return wm;
+}
+
+vec3 sampleGGXnormal(vec3 N, vec3 world_wi, vec2 u, vec2 alpha) {
+    vec3 T, B;
+    frisvad(N, T, B);
+    vec3 local_wi = normalize(vec3(dot(world_wi, T), dot(world_wi, B), dot(world_wi, N)));
+    vec3 local_m = SampleVndf_GGX(u, local_wi, alpha);
+    vec3 world_m = normalize(local_m.x * T + local_m.y * B + local_m.z * N);
+    return world_m;
+}
+
 vec3 GetEnvironmentLight(Ray ray) {
     return vec3(0.0);
     float a = 0.5*(ray.dir.y + 1.0);
@@ -269,50 +316,50 @@ vec3 traceRay(Ray ray, inout uint rngState) {
         Material material = hitInfo.material;
 
         if (hitInfo.didHit) {
+            vec3 microsurfaceNormal = sampleGGXnormal(hitInfo.normal, -ray.dir, vec2(RandomValue(rngState), RandomValue(rngState)), vec2(material.roughness));
+            if (material.roughness < 0.01) microsurfaceNormal = hitInfo.normal;
+
             vec3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
-            vec3 specularReflectionDir = reflect(ray.dir, hitInfo.normal);
+            vec3 specularReflectionDir = reflect(ray.dir, microsurfaceNormal);
             bool isDiffuseBounce = RandomValue(rngState) < material.metalness;
             vec3 reflectionDir = mix(specularReflectionDir, diffuseDir, isDiffuseBounce ? material.roughness : 1.0);
-            vec3 specularTransmissionDir = refract(ray.dir, hitInfo.normal, isInsideMedium ? material.ior : 1.0/material.ior);
-            vec3 transmissionDir = mix(specularTransmissionDir, -diffuseDir, material.roughness);
+            vec3 specularTransmissionDir = refract(ray.dir, microsurfaceNormal, isInsideMedium ? material.ior : 1.0/material.ior);
 
-            /*if (material.alpha == 0.0) {
-                debugColor = vec3(0.0, 1.0, 0.0);
-                if (transmissionDir == ray.dir) debugColor = vec3(1.0, 0.0, 1.0);
-            } else {
-                debugColor = vec3(1.0, 1.0, 1.0);
-            }
-            break;*/
-            if (material.alpha == 0.0) {
-                if (RandomValue(rngState) < fresnelReflection(ray.dir, hitInfo.normal, isInsideMedium ? material.ior : 1.0, isInsideMedium ? 1.0 : material.ior)) {
-                    ray.dir = reflectionDir;
-                    reflectionBounces++;
-                } else {
-                    ray.dir = transmissionDir;
-                    transmissionBounces++;
-                    isInsideMedium = !isInsideMedium;
-                }
-            } else {
-                ray.dir = reflectionDir;
-                reflectionBounces++;
-            }
-
-            ray.origin = hitInfo.pos + 1e-5 * ray.dir;
-
-//            if (transmissionDir == ray.dir && material.alpha == 0.0) debugColor = vec3(0.0, 1.0, 0.0);
 
             vec3 emittedLight = material.emissionColor * material.emissionStrength;
             inLight += emittedLight * rayColor;
-            rayColor *= material.color;
+
+            if (RandomValue(rngState) < material.metalness) {
+                if (dot(specularReflectionDir, hitInfo.normal) < 0.0) break;
+                ray.dir = specularReflectionDir;
+                rayColor *= material.color;
+                reflectionBounces++;
+            } else {
+                if (RandomValue(rngState) < fresnelReflection(ray.dir, microsurfaceNormal, isInsideMedium ? material.ior : 1.0, isInsideMedium ? 1.0 : material.ior)) {
+                    if (dot(specularReflectionDir, hitInfo.normal) < 0.0) break;
+                    ray.dir = specularReflectionDir;
+                    rayColor *= vec3(1.0);
+                    reflectionBounces++;
+                } else {
+                    if (RandomValue(rngState) < material.alpha) {
+                        ray.dir = diffuseDir;
+                        rayColor *= material.color;
+                        reflectionBounces++;
+                    } else {
+                        ray.dir = specularTransmissionDir;
+                        transmissionBounces++;
+                        isInsideMedium = !isInsideMedium;
+                        rayColor *= material.color;
+                    }
+                }
+            }
+
+            ray.origin = hitInfo.pos + 1e-5 * ray.dir;
         } else {
             inLight += GetEnvironmentLight(ray) * rayColor;
             break;
         }
     }
-//    if (transmissionBounces >= maxBounces_transmission) {
-//        if (reflectionBounces == 2) debugColor = vec3(0.0, 1.0, 1.0);
-//        else debugColor = vec3(0.0, 1.0, 0.0);
-//    }
     return inLight;
 }
 
