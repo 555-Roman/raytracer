@@ -85,6 +85,7 @@ struct Model {
 
     vec4 color_smoothness;
     vec4 emissionColor_emissionStrength;
+    vec4 transmission_ior_metalness_tbd;
 
     vec4 translation;
     mat4 rotation;
@@ -118,23 +119,23 @@ HitInfo intersectRaySphere(Ray ray, Sphere sphere, bool detectBackFace) {
 
     if (discriminant > 0) {
         float t = (-b - sqrt(discriminant)) / (2 * a);
-        if (detectBackFace) {
-            float t1 = (-b + sqrt(discriminant)) / (2 * a);
-            float t = min(max(t, 0), max(t1, 0));
+        if (t <= 0 && detectBackFace) {
+            t = (-b + sqrt(discriminant)) / (2 * a);
         }
 
         if (t > 0) {
             hitInfo.didHit = true;
-            hitInfo.t = t;
             hitInfo.pos = ray.origin + ray.dir * t;
             hitInfo.normal = normalize(hitInfo.pos - sphere.pos_radius.xyz);
-            if (detectBackFace) hitInfo.isBackFace = dot(hitInfo.normal, ray.dir) > 0;
+            hitInfo.isBackFace = dot(hitInfo.normal, ray.dir) > 0;
+            if (hitInfo.isBackFace) hitInfo.normal = -hitInfo.normal;
+            hitInfo.t = t;
         }
     }
     return hitInfo;
 }
 
-HitInfo intersectRayTriangle(Ray ray, Triangle triangle) {
+HitInfo intersectRayTriangle(Ray ray, Triangle triangle, bool detectBackFace) {
     vec3 edgeAB = triangle.posB.xyz - triangle.posA.xyz;
     vec3 edgeAC = triangle.posC.xyz - triangle.posA.xyz;
     vec3 normalVector =  cross(edgeAB, edgeAC);
@@ -150,9 +151,11 @@ HitInfo intersectRayTriangle(Ray ray, Triangle triangle) {
     float w = 1.0 - u - v;
 
     HitInfo hitInfo;
-    hitInfo.didHit = determinant >= 1e-6 && t > 0 && u >= 0 && v >= 0 && w >= 0;
+    bool validDet = detectBackFace ? abs(determinant) >= 1e-6 : determinant >= 1e-6;
+    hitInfo.didHit = validDet && t > 0 && u >= 0 && v >= 0 && w >= 0;
     hitInfo.pos = ray.origin + ray.dir * t;
-    hitInfo.normal = normalize(triangle.normalA.xyz * w + triangle.normalB.xyz * u + triangle.normalC.xyz * v);
+    hitInfo.normal = normalize(triangle.normalA.xyz * w + triangle.normalB.xyz * u + triangle.normalC.xyz * v) * (determinant < 0.0 ? -1 : 1);
+    hitInfo.isBackFace = determinant < 0.0;
     hitInfo.t = t;
     return hitInfo;
 }
@@ -201,7 +204,7 @@ HitInfo calculateRayIntersection(Ray ray, bool detectBackFace) {
         if (!intersectRayBox(localRay, model.boundMin.xyz, model.boundMax.xyz)) continue;
         for (uint i = model.triangleIndex; i < model.triangleIndex+model.triangleCount; i++) {
             Triangle triangle = triangles[i];
-            HitInfo hitInfo = intersectRayTriangle(localRay, triangle);
+            HitInfo hitInfo = intersectRayTriangle(localRay, triangle, detectBackFace);
             if (hitInfo.didHit && hitInfo.t < closestHit.t) {
                 didHitModel = true;
                 closestHit = hitInfo;
@@ -210,18 +213,16 @@ HitInfo calculateRayIntersection(Ray ray, bool detectBackFace) {
                 material.emissionColor = model.emissionColor_emissionStrength.rgb;
                 material.emissionStrength = model.emissionColor_emissionStrength.a;
                 material.roughness = model.color_smoothness.a;
-                material.transmission = 0.0;
-                material.ior = 1.0;
-                material.metalness = 0.0;
+                material.transmission = model.transmission_ior_metalness_tbd.r;
+                material.ior = model.transmission_ior_metalness_tbd.g;
+                material.metalness = model.transmission_ior_metalness_tbd.b;
                 closestHit.material = material;
             }
         }
         if (didHitModel) {
             closestHit.pos = mat3(model.inverseRotation) * closestHit.pos;
             closestHit.pos += model.translation.xyz;
-    //        debugColor = normalize(closestHit.pos);
             closestHit.normal = normalize(mat3(model.inverseRotation) * closestHit.normal);
-    //        debugColor = closestHit.normal;
         }
     }
     return closestHit;
@@ -321,10 +322,7 @@ vec3 traceRay(Ray ray, inout uint rngState) {
 
             vec3 diffuseDir = normalize(hitInfo.normal + RandomDirection(rngState));
             vec3 specularReflectionDir = reflect(ray.dir, microsurfaceNormal);
-            bool isDiffuseBounce = RandomValue(rngState) < material.metalness;
-            vec3 reflectionDir = mix(specularReflectionDir, diffuseDir, isDiffuseBounce ? material.roughness : 1.0);
             vec3 specularTransmissionDir = refract(ray.dir, microsurfaceNormal, isInsideMedium ? material.ior : 1.0/material.ior);
-
 
             vec3 emittedLight = material.emissionColor * material.emissionStrength;
             inLight += emittedLight * rayColor;
@@ -354,7 +352,7 @@ vec3 traceRay(Ray ray, inout uint rngState) {
                 }
             }
 
-            ray.origin = hitInfo.pos + 1e-5 * ray.dir;
+            ray.origin = hitInfo.pos + ray.dir * 1e-6;
         } else {
             inLight += GetEnvironmentLight(ray) * rayColor;
             break;

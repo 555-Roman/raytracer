@@ -25,7 +25,8 @@ unsigned int frameCount = 0;
 
 const float cameraMoveSpeed = 1;
 const float cameraRotateSpeed = 60;
-float cameraPitch = 30.605, cameraYaw = 158.442;
+// float cameraPitch = 40.2558, cameraYaw = 175.752;
+float cameraPitch = 0, cameraYaw = 180;
 
 bool START_RENDER = false;
 bool ZERO_TOGGLE = true;
@@ -35,8 +36,8 @@ bool ZERO_TOGGLE = true;
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 #else
-const unsigned int SCR_WIDTH = 1920 / 4;
-const unsigned int SCR_HEIGHT = 1080 / 4;
+const unsigned int SCR_WIDTH = 1920 / 2;
+const unsigned int SCR_HEIGHT = 1080 / 2;
 #endif
 
 GLuint sphereSSBO;
@@ -44,7 +45,8 @@ GLuint triangleSSBO;
 std::vector<Triangle> triangles;
 GLuint modelSSBO;
 
-vec3 cameraPosition = vec3(0.744028, 0.912504, 1.45345);
+// vec3 cameraPosition = vec3(0.332639, 0.912504, 1.23726);
+vec3 cameraPosition = vec3(0, 0, 4);
 vec3 cameraForward = vec3(0, 0, 1);
 vec3 cameraUp = vec3(0, 1, 0);
 vec3 cameraRight = vec3(1, 0, 0);
@@ -157,7 +159,7 @@ int main() {
     for (Triangle triangle : trianglesFromModel) {
         triangles.push_back(triangle);
     }
-    trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/model.obj");
+    trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/sphere_3.obj");
     for (Triangle triangle : trianglesFromModel) {
         triangles.push_back(triangle);
     }
@@ -261,7 +263,7 @@ int main() {
 
 void sendSpheres() {
     std::vector<Sphere> spheres;
-    Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(1.0, 1.5, 0.0, 0.0)};
+    Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(1.0, 2.0, 0.0, 0.0)};
     Sphere mySphere1 = {vec4(-0.5, -1.0, -1.5, 0.25), vec4(1.0, 0.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0)};
     spheres.push_back(mySphere0);
     spheres.push_back(mySphere1);
@@ -271,14 +273,6 @@ void sendSpheres() {
 }
 
 void sendTriangles() {
-    // Triangle triangle0 = {
-        // vec4(0.0, 0.5, -1.0, 0.0), vec4(3.0, 0.5, -1.0, 0.0), vec4(0.0, 0.5, -4.0, 0.0),
-        // normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)), normalize(vec4(0.0, 1.0, 0.0, 0.0)),
-        // vec4(1.0), vec4(0.0)
-    // };
-    // triangles = std::vector<Triangle>();
-    // triangles.push_back(triangle0);
-
     glBufferData(GL_SHADER_STORAGE_BUFFER, triangles.size() * sizeof(Triangle), &(triangles[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, triangleSSBO);
 }
@@ -300,59 +294,59 @@ void sendModels() {
         0, 12, {0, 0},
         vec4(-2.4, -2, -1.98333, 0.0f),
         vec4(-2, 2, 2.01667, 0.0),
-        vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0),
+        vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model1 = {
         12, 12, {0, 0},
         vec4(2, -2, -1.98333, 0.0f),
         vec4(2.4, 2, 2.01667, 0.0),
-        vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0),
+        vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
         vec4( 0.0), defaultRotation, inverse(defaultRotation)
     };
     Model model2 = {
         24, 36, {0, 0},
         vec4(-2, -2.4, -2.38333, 0.0f),
         vec4(2, 2.4, 2.01667, 0.0),
-        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0),
+        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model wallQuad = {
         60, 2, {0, 0},
         vec4(-2, -2, 2.01667, 0.0f),
         vec4(2, 2, 2.01667, 0.0),
-        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0),
+        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
     Model lightQuad = {
         60, 2, {0, 0},
         vec4(-2, -2, 2.01667, 0.0f),
         vec4(2, 2, 2.01667, 0.0),
-        vec4(0.0), vec4(1.0),
+        vec4(0.0), vec4(1.0), vec4(0.0, 1.0, 0.0, 0.0),
         vec4(0.0, 0.0, -5.0, 0.0), rotate(defaultRotation, 3.1415926f, vec3(0.0f, 1.0f, 0.0f)), inverse(rotate(defaultRotation, 180.0f, vec3(0.0f, 1.0f, 0.0f)))
     };
     Model model3 = {
         62, 12, {0, 0},
         vec4(-0.5, 1.95, -0.483333, 0.0f),
         vec4(0.5, 2.05, 0.516667, 0.0),
-        vec4(1.0, 1.0, 1.0, 1.0), vec4(1.0, 1.0, 1.0, 5.0),
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 1.0, 1.0, 5.0), vec4(0.0, 1.0, 0.0, 0.0),
         vec4(0.0), defaultRotation, inverse(defaultRotation)
     };
-    Model model4 = {
-        74, 968, {0, 0},
-        vec4(-1.36719, -0.984375, -0.851562, 0.0),
-        vec4(1.36719, 0.984375, 0.851562, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0),
-        vec4(0.0, -0.5, 0.0, 0.0), defaultRotation, inverse(defaultRotation)
+    Model sphereModel = {
+        74, 320, {0, 0},
+        vec4(-1, -1, -1, 0.0),
+        vec4(1, 1, 1, 0.0),
+        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(1.0, 2.0, 0.0, 0.0),
+        vec4(0.0, 0, 0.0, 0.0), defaultRotation, inverse(defaultRotation)
     };
     std::vector<Model> models;
     models.push_back(model0);
     models.push_back(model1);
     models.push_back(model2);
-    models.push_back(wallQuad);
+    // models.push_back(wallQuad);
     // models.push_back(lightQuad);
     models.push_back(model3);
-    // models.push_back(model4);
+    // models.push_back(sphereModel);
     glBufferData(GL_SHADER_STORAGE_BUFFER, models.size() * sizeof(Model), &(models[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, modelSSBO);
 }
@@ -381,7 +375,7 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
 
     if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
-        saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, "screenshot.png");
+        saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, "screenshot_transmission_1.png");
     }
     if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
         std::cout << "Camera Data:" << std::endl;

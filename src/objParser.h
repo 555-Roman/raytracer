@@ -34,6 +34,7 @@ struct Model {
 
     vec4 color_roughness;
     vec4 emissionColor_emissionStrength;
+    vec4 transmission_ior_metalness_tbd;
 
     vec4 translation;
     mat4 rotation;
