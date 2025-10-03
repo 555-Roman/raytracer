@@ -17,32 +17,16 @@ struct Sphere {
     vec4 transmission_ior_metalness_tbd;
 };
 struct Triangle {
-    vec4 posA;
-    vec4 posB;
-    vec4 posC;
-    vec4 normalA;
-    vec4 normalB;
-    vec4 normalC;
-};
-struct Model {
-    uint triangleIndex;
-    uint triangleCount;
-    uint padding[2];
-
-    vec4 boundMin;
-    vec4 boundMax;
-
-    vec4 color_roughness;
-    vec4 emissionColor_emissionStrength;
-    vec4 transmission_ior_metalness_tbd;
-
-    vec4 translation;
-    mat4 rotation;
-    mat4 inverseRotation;
+    vec4 pos_uvx_A;
+    vec4 pos_uvx_B;
+    vec4 pos_uvx_C;
+    vec4 normal_uvy_A;
+    vec4 normal_uvy_B;
+    vec4 normal_uvy_C;
 };
 
 
-std::vector<Triangle> getTrianglesFromOBJ(const char* filePath) {
+inline std::vector<Triangle> getTrianglesFromOBJ(std::string filePath) {
     std::string contents;
     std::ifstream file;
     // file.exceptions (std::ifstream::failbit | std::ifstream::badbit);
@@ -51,7 +35,7 @@ std::vector<Triangle> getTrianglesFromOBJ(const char* filePath) {
         file.open(filePath);
     } catch (std::ifstream::failure& e) {
         std::cout << "ERROR::MODEL::FILE_NOT_SUCCESSFULLY_OPENED: " << e.what();
-        return std::vector<Triangle>();
+        return {};
     }
 
     std::vector<vec3> vertices;
@@ -161,7 +145,7 @@ std::vector<Triangle> getTrianglesFromOBJ(const char* filePath) {
     // }
     // std::cout << "! done" << std::endl;
 
-    std::vector<Triangle> triangles;
+    std::vector<Triangle> triangles_;
     for (auto & face : faces) {
         ivec3 faceIndices = ivec3(0, 1, 2);
         for (int i = 0; i < face.size()-2; i++) {
@@ -191,14 +175,14 @@ std::vector<Triangle> getTrianglesFromOBJ(const char* filePath) {
                 vec4(posA, 0.0), vec4(posB, 0.0), vec4(posC, 0.0),
                 vec4(normalA, 0.0), vec4(normalB, 0.0), vec4(normalC, 0.0)
             };
-            triangles.push_back(toPush);
+            triangles_.push_back(toPush);
 
             faceIndices = ivec3(0, faceIndices.z, faceIndices.z+1);
         }
     }
 
     // std::cout << "! returning " << triangles.size() << " triangles" << std::endl;
-    return triangles;
+    return triangles_;
 }
 
 #endif

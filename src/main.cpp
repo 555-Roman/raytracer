@@ -10,6 +10,9 @@
 #include "glm/glm.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <algorithm>
+
+#include "model.h"
 #include "stb_image_write.h"
 
 using namespace glm;
@@ -36,13 +39,12 @@ bool ZERO_TOGGLE = true;
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 #else
-const unsigned int SCR_WIDTH = 1920 / 2;
-const unsigned int SCR_HEIGHT = 1080 / 2;
+const unsigned int SCR_WIDTH = 1920 / 4;
+const unsigned int SCR_HEIGHT = 1080 / 4;
 #endif
 
 GLuint sphereSSBO;
 GLuint triangleSSBO;
-std::vector<Triangle> triangles;
 GLuint modelSSBO;
 
 // vec3 cameraPosition = vec3(0.332639, 0.912504, 1.23726);
@@ -153,33 +155,48 @@ int main() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, sphereSSBO);
     sendSpheres();
 
-    glGenBuffers(1, &triangleSSBO);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, triangleSSBO);
-    std::vector<Triangle> trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/box.obj");
-    for (Triangle triangle : trianglesFromModel) {
-        triangles.push_back(triangle);
-    }
-    trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/sphere_3.obj");
-    for (Triangle triangle : trianglesFromModel) {
-        triangles.push_back(triangle);
-    }
-    sendTriangles();
-
     glGenBuffers(1, &modelSSBO);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, modelSSBO);
     sendModels();
 
+    glGenBuffers(1, &triangleSSBO);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, triangleSSBO);
+    // std::vector<Triangle> trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/box.obj");
+    // for (Triangle triangle : trianglesFromModel) {
+        // triangles.push_back(triangle);
+    // }
+    // trianglesFromModel = getTrianglesFromOBJ(RESOURCES_PATH "/sphere_3.obj");
+    // for (Triangle triangle : trianglesFromModel) {
+        // triangles.push_back(triangle);
+    // }
+    sendTriangles();
+
     // uncomment this call to draw in wireframe polygons.
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+    auto startTime = std::chrono::high_resolution_clock::now();
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window)) {
+        glfwSetWindowTitle(window, std::to_string(frameCount).c_str());
+
         if (START_RENDER) {
-            if (frameCount == 10) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples.png"); }
-            if (frameCount == 100) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples.png"); }
-            if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples.png"); }
-            if (frameCount == 10000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10000_samples.png"); }
+            if (frameCount == 10) {
+                std::cout << "Done 10 samples in: " << std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startTime).count() << 's' << std::endl;
+                saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10_samples.png");
+            }
+            if (frameCount == 100) {
+                std::cout << "Done 100 samples in: " << std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startTime).count() << 's' << std::endl;
+                saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "100_samples.png");
+            }
+            if (frameCount == 1000) {
+                std::cout << "Done 1000 samples in: " << std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startTime).count() << 's' << std::endl;
+                saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "1000_samples.png");
+            }
+            if (frameCount == 10000) {
+                std::cout << "Done 10000 samples in: " << std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startTime).count() << 's' << std::endl;
+                saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, SCREENSHOTS_PATH "10000_samples.png");
+            }
         }
         // if (frameCount == 1000) { saveScreenshot(0, 0, SCR_WIDTH, SCR_HEIGHT, "1000_samples_screenshot_100_bounces.png"); }
 
@@ -264,9 +281,9 @@ int main() {
 void sendSpheres() {
     std::vector<Sphere> spheres;
     Sphere mySphere0 = {vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(1.0, 2.0, 0.0, 0.0)};
-    Sphere mySphere1 = {vec4(-0.5, -1.0, -1.5, 0.25), vec4(1.0, 0.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0)};
-    spheres.push_back(mySphere0);
-    spheres.push_back(mySphere1);
+    Sphere mySphere1 = {vec4(-0.5, -1.0, -1.5, 0.25), vec4(1.0, 0.0, 1.0, 1.0), vec4(1.0), vec4(0.0, 1.0, 0.0, 0.0)};
+    // spheres.push_back(mySphere0);
+    // spheres.push_back(mySphere1);
 
     glBufferData(GL_SHADER_STORAGE_BUFFER, spheres.size() * sizeof(Sphere), &(spheres[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sphereSSBO);
@@ -278,76 +295,32 @@ void sendTriangles() {
 }
 mat4 defaultRotation = mat4(1);
 void sendModels() {
-    vec3 Mmin = vec3(triangles[60].posA);
-    vec3 Mmax = vec3(triangles[60].posA);
-    for (int i = 60; i < 62; i++) {
-        Mmin = min(Mmin, vec3(triangles[i].posA));
-        Mmin = min(Mmin, vec3(triangles[i].posB));
-        Mmin = min(Mmin, vec3(triangles[i].posC));
-        Mmax = max(Mmax, vec3(triangles[i].posA));
-        Mmax = max(Mmax, vec3(triangles[i].posB));
-        Mmax = max(Mmax, vec3(triangles[i].posC));
+    loadTriangles(RESOURCES_PATH "box.obj");
+    Material myMaterial0 = {vec3(0.0, 1.0, 0.0), 1.0, vec3(0.0), 0.0, 1.0, 0.0, 1.0, 0.0};
+    Transform myTransform = {vec3(0.0), defaultRotation, vec3(1.0)};
+    Model myModel0 = Model(0, 12, myMaterial0, myTransform);
+    Material myMaterial1 = {vec3(1.0, 0.0, 0.0), 1.0, vec3(0.0), 0.0, 1.0, 0.0, 1.0, 0.0};
+    Model myModel1 = Model(12, 12, myMaterial1, myTransform);
+    Material myMaterial2 = {vec3(1.0, 1.0, 1.0), 1.0, vec3(0.0), 0.0, 1.0, 0.0, 1.0, 0.0};
+    Model myModel2 = Model(24, 38, myMaterial2, myTransform);
+    Material myMaterial3 = {vec3(1.0, 1.0, 1.0), 1.0, vec3(1.0), 5.0, 1.0, 0.0, 1.0, 0.0};
+    Model myModel3 = Model(62, 12, myMaterial3, myTransform);
+
+    Material myMaterial4 = {vec3(1.0, 1.0, 1.0), 0.01, vec3(0.0), 0.0, 1.0, 0.0, 1.0, 1.0};
+    Model myModel4 = Model(RESOURCES_PATH "model.obj", myMaterial4, myTransform);
+
+    std::vector<SSBO_Model> SSBO_models;
+    for (Model* model : models) {
+        SSBO_Model returnType = {
+            model->triangleIndex, model->triangleCount, 0u, 0u,
+            vec4(model->boundMin, 0.0), vec4(model->boundMax, 0.0),
+            vec4(model->material.color, model->material.roughness), vec4(model->material.emissionColor, model->material.emissionStrength), vec4(model->material.transmission, model->material.ior, model->material.metalness, 0.0),
+            vec4(model->transform.translation, 0.0), mat4(model->transform.rotation), inverse(mat4(model->transform.rotation))
+        };
+        SSBO_models.push_back(returnType);
     }
-    std::cout << "Mmin: " << Mmin.x << ", " << Mmin.y << ", " << Mmin.z << std::endl;
-    std::cout << "Mmax: " << Mmax.x << ", " << Mmax.y << ", " << Mmax.z << std::endl;
-    Model model0 = {
-        0, 12, {0, 0},
-        vec4(-2.4, -2, -1.98333, 0.0f),
-        vec4(-2, 2, 2.01667, 0.0),
-        vec4(0.0, 1.0, 0.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0), defaultRotation, inverse(defaultRotation)
-    };
-    Model model1 = {
-        12, 12, {0, 0},
-        vec4(2, -2, -1.98333, 0.0f),
-        vec4(2.4, 2, 2.01667, 0.0),
-        vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
-        vec4( 0.0), defaultRotation, inverse(defaultRotation)
-    };
-    Model model2 = {
-        24, 36, {0, 0},
-        vec4(-2, -2.4, -2.38333, 0.0f),
-        vec4(2, 2.4, 2.01667, 0.0),
-        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0), defaultRotation, inverse(defaultRotation)
-    };
-    Model wallQuad = {
-        60, 2, {0, 0},
-        vec4(-2, -2, 2.01667, 0.0f),
-        vec4(2, 2, 2.01667, 0.0),
-        vec4(1.0, 1.0, 1.0, 1.0), vec4(0.0), vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0), defaultRotation, inverse(defaultRotation)
-    };
-    Model lightQuad = {
-        60, 2, {0, 0},
-        vec4(-2, -2, 2.01667, 0.0f),
-        vec4(2, 2, 2.01667, 0.0),
-        vec4(0.0), vec4(1.0), vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0, 0.0, -5.0, 0.0), rotate(defaultRotation, 3.1415926f, vec3(0.0f, 1.0f, 0.0f)), inverse(rotate(defaultRotation, 180.0f, vec3(0.0f, 1.0f, 0.0f)))
-    };
-    Model model3 = {
-        62, 12, {0, 0},
-        vec4(-0.5, 1.95, -0.483333, 0.0f),
-        vec4(0.5, 2.05, 0.516667, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(1.0, 1.0, 1.0, 5.0), vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0), defaultRotation, inverse(defaultRotation)
-    };
-    Model sphereModel = {
-        74, 320, {0, 0},
-        vec4(-1, -1, -1, 0.0),
-        vec4(1, 1, 1, 0.0),
-        vec4(1.0, 1.0, 1.0, 0.0), vec4(0.0), vec4(1.0, 2.0, 0.0, 0.0),
-        vec4(0.0, 0, 0.0, 0.0), defaultRotation, inverse(defaultRotation)
-    };
-    std::vector<Model> models;
-    models.push_back(model0);
-    models.push_back(model1);
-    models.push_back(model2);
-    // models.push_back(wallQuad);
-    // models.push_back(lightQuad);
-    models.push_back(model3);
-    // models.push_back(sphereModel);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, models.size() * sizeof(Model), &(models[0]), GL_DYNAMIC_COPY);
+
+    glBufferData(GL_SHADER_STORAGE_BUFFER, SSBO_models.size() * sizeof(SSBO_Model), &(SSBO_models[0]), GL_DYNAMIC_COPY);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, modelSSBO);
 }
 
@@ -364,7 +337,6 @@ vec3 rotateY(vec3 vector, float angle) {
 // ---------------------------------------------------------------------------------------------------------
 unsigned char buffer[3 * SCR_WIDTH * SCR_HEIGHT];
 void saveScreenshot(int x, int y, int width, int height, char name[]) {
-    std::cout << "saving screenshot with name \"" << name << "\"..." << std::endl;
     glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, &buffer);
     stbi_write_png(name, SCR_WIDTH, SCR_HEIGHT, 3, &buffer, 3 * SCR_WIDTH);
 }

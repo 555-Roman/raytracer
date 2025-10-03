@@ -299,7 +299,7 @@ vec3 sampleGGXnormal(vec3 N, vec3 world_wi, vec2 u, vec2 alpha) {
 }
 
 vec3 GetEnvironmentLight(Ray ray) {
-    return vec3(0.0);
+    return vec3(1.0);
     float a = 0.5*(ray.dir.y + 1.0);
     return mix(vec3(1.0, 1.0, 1.0), vec3(0.5, 0.7, 1.0), a);
 }
